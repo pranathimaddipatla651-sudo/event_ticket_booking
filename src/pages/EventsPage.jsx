@@ -61,9 +61,30 @@ const events = [
 
 const categories = ["All", "Music", "Technology", "Arts"];
 
+function toDateInputValue(dateString) {
+  const [day, month, year] = dateString.split(" ");
+  const months = {
+    January: "01",
+    February: "02",
+    March: "03",
+    April: "04",
+    May: "05",
+    June: "06",
+    July: "07",
+    August: "08",
+    September: "09",
+    October: "10",
+    November: "11",
+    December: "12",
+  };
+
+  return `${year}-${months[month]}-${day.padStart(2, "0")}`;
+}
+
 export default function EventsPage() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
+  const [selectedDate, setSelectedDate] = useState("");
 
   const filteredEvents = events.filter((event) => {
     const matchesSearch = event.name
@@ -73,16 +94,46 @@ export default function EventsPage() {
     const matchesCategory =
       category === "All" || event.category === category;
 
-    return matchesSearch && matchesCategory;
+    const matchesDate =
+      !selectedDate || toDateInputValue(event.date) === selectedDate;
+
+    return matchesSearch && matchesCategory && matchesDate;
   });
 
   return (
     <section className="section page-section">
       <p className="eyebrow">FIND YOUR NEXT EXPERIENCE</p>
-      <h1 className="page-title">Explore events<span>.</span></h1>
+      <h1 className="page-title">
+        Explore events<span>.</span>
+      </h1>
       <p className="muted">
         Discover events, meet people, and make memories.
       </p>
+
+      <div className="event-date-filter">
+        <label htmlFor="event-date">
+          Select a date to find available events
+        </label>
+
+        <div className="date-filter-controls">
+          <input
+            id="event-date"
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+          />
+
+          {selectedDate && (
+            <button
+              type="button"
+              className="filter-btn"
+              onClick={() => setSelectedDate("")}
+            >
+              Clear date
+            </button>
+          )}
+        </div>
+      </div>
 
       <input
         className="search-input"
@@ -96,7 +147,10 @@ export default function EventsPage() {
         {categories.map((item) => (
           <button
             key={item}
-            className={`filter-btn ${category === item ? "active" : ""}`}
+            type="button"
+            className={`filter-btn ${
+              category === item ? "active" : ""
+            }`}
             onClick={() => setCategory(item)}
           >
             {item}
@@ -104,12 +158,20 @@ export default function EventsPage() {
         ))}
       </div>
 
+      <p className="muted">
+        {selectedDate
+          ? `Events on ${selectedDate}: ${filteredEvents.length} found`
+          : `${filteredEvents.length} events found`}
+      </p>
+
       <div className="event-grid">
         {filteredEvents.map((event) => (
           <article className="event-card" key={event.id}>
             <div className={`event-image ${event.style}`}>
               <span>{event.emoji}</span>
-              <span className="event-category">{event.category}</span>
+              <span className="event-category">
+                {event.category}
+              </span>
             </div>
 
             <div className="event-info">
@@ -131,7 +193,10 @@ export default function EventsPage() {
       </div>
 
       {filteredEvents.length === 0 && (
-        <p>No events found. Try another search.</p>
+        <p>
+          No events found for your selection. Try another date,
+          category, or search.
+        </p>
       )}
     </section>
   );
