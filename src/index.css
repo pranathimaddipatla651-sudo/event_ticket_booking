@@ -938,3 +938,80 @@ button {
 .navbar-auth a {
   text-decoration: none;
 }
+
+/* ===== EventEase Calendar Date Filter ===== */
+
+.event-date-filter {
+  margin: 28px 0 24px;
+  padding: 22px 24px;
+  background: linear-gradient(135deg, #f0f7f2, #f8f5ef);
+  border: 1px solid #e2e9e2;
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.event-date-filter label {
+  color: #254f3d;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.1px;
+}
+
+.date-filter-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.date-filter-controls input[type="date"] {
+  width: 100%;
+  max-width: 320px;
+  min-height: 50px;
+  padding: 0 16px;
+  background: #ffffff;
+  border: 1px solid #d6e1d8;
+  border-radius: 12px;
+  color: #252a25;
+  font-family: inherit;
+  font-size: 15px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.date-filter-controls input[type="date"]:hover {
+  border-color: #7a9c89;
+}
+
+.date-filter-controls input[type="date"]:focus {
+  border-color: #286047;
+  box-shadow: 0 0 0 4px rgba(40, 96, 71, 0.12);
+}
+
+.date-filter-controls .filter-btn {
+  min-height: 44px;
+}
+
+.event-date-filter + .search-input {
+  margin-top: 0;
+}
+
+@media (max-width: 600px) {
+  .event-date-filter {
+    padding: 18px;
+    margin-top: 22px;
+  }
+
+  .date-filter-controls input[type="date"] {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .date-filter-controls {
+    align-items: stretch;
+  }
+}
+
