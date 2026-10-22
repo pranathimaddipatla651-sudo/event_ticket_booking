@@ -3,3 +3,4 @@ uvicorn[standard]
 pymysql
 cryptography
 python-dotenv
+email-validator
