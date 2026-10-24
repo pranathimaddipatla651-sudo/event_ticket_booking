@@ -1,5 +1,5 @@
 
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import Navbar from "./Navbar";
 import HomePage from "./pages/HomePage";
@@ -11,7 +11,9 @@ import BookingPage from "./pages/BookingPage";
 import BookingConfirmationPage from "./pages/BookingConfirmationPage";
 import MyBookingsPage from "./pages/MyBookingsPage";
 import TicketDetailsPage from "./pages/TicketDetailsPage";
+import AdminLoginPage from "./pages/AdminLoginPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
+
 import "./App.css";
 import "./index.css";
 
@@ -24,13 +26,21 @@ function PlaceholderPage({ title }) {
           This feature is under development.
           We are working to make your EventEase experience better!
         </p>
-
         <a href="/" className="primary-button">
           Back to Home
         </a>
       </div>
     </div>
   );
+}
+
+function ProtectedAdminRoute() {
+  const isAdminLoggedIn =
+    localStorage.getItem("eventEaseAdminLoggedIn") === "true";
+
+  return isAdminLoggedIn
+    ? <AdminDashboardPage />
+    : <Navigate to="/admin-login" replace />;
 }
 
 function App() {
@@ -43,33 +53,27 @@ function App() {
           <Route path="/" element={<HomePage />} />
 
           <Route path="/events" element={<EventsPage />} />
+          <Route path="/events/:id" element={<EventDetailsPage />} />
 
-          <Route
-          path="/events/:id"
-          element={<EventDetailsPage />}
-          />
           <Route path="/booking" element={<BookingPage />} />
           <Route
-          path="/confirmation/:id"
-          element={<BookingConfirmationPage />}
+            path="/confirmation/:id"
+            element={<BookingConfirmationPage />}
           />
 
-         <Route
-          path="/my-bookings"
-          element={<MyBookingsPage />}
-          />
-         <Route
-          path="/ticket/:id"
-          element={<TicketDetailsPage />}
-         />
+          <Route path="/my-bookings" element={<MyBookingsPage />} />
+          <Route path="/ticket/:id" element={<TicketDetailsPage />} />
 
-        <Route path="/login" element={<LoginPage />} />
-
+          <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
 
           <Route
-          path="/admin"
-          element={<AdminDashboardPage />}
+            path="/admin-login"
+            element={<AdminLoginPage />}
+          />
+          <Route
+            path="/admin"
+            element={<ProtectedAdminRoute />}
           />
 
           <Route
