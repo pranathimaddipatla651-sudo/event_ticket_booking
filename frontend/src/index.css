@@ -1230,3 +1230,29 @@ button {
   }
 }
 
+/* Highlight the current navigation page */
+.navbar-links a.active,
+.navbar-auth a.active {
+  color: #246044;
+  font-weight: 700;
+  position: relative;
+}
+
+.navbar-links a.active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -8px;
+  height: 3px;
+  border-radius: 3px;
+  background: #246044;
+}
+
+.navbar-logout {
+  border: none;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
