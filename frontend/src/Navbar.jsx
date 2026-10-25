@@ -1,7 +1,18 @@
 
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 
 function Navbar() {
+  const navigate = useNavigate();
+
+  const isAdminLoggedIn =
+    localStorage.getItem("eventEaseAdminLoggedIn") === "true";
+
+  function handleAdminLogout() {
+    localStorage.removeItem("eventEaseAdminLoggedIn");
+    navigate("/admin-login");
+    window.location.reload();
+  }
+
   return (
     <nav className="navbar">
       <Link to="/" className="navbar-brand">
@@ -21,12 +32,28 @@ function Navbar() {
           My Bookings
         </NavLink>
 
-        <NavLink to="/admin">
-          Admin Dashboard
-        </NavLink>
+        {isAdminLoggedIn && (
+          <NavLink to="/admin">
+            Admin Dashboard
+          </NavLink>
+        )}
       </div>
 
       <div className="navbar-auth">
+        {isAdminLoggedIn ? (
+          <button
+            type="button"
+            className="login-link navbar-logout"
+            onClick={handleAdminLogout}
+          >
+            Admin Logout
+          </button>
+        ) : (
+          <NavLink to="/admin-login" className="login-link">
+            Admin Login
+          </NavLink>
+        )}
+
         <NavLink to="/login" className="login-link">
           Log in
         </NavLink>

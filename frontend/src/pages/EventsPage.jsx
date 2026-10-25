@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -59,31 +60,60 @@ const events = [
 ];
 
 const categories = ["All", "Music", "Technology", "Arts"];
+const weekdays = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
-function toDateInputValue(dateString) {
-  const [day, month, year] = dateString.split(" ");
-  const months = {
-    January: "01",
-    February: "02",
-    March: "03",
-    April: "04",
-    May: "05",
-    June: "06",
-    July: "07",
-    August: "08",
-    September: "09",
-    October: "10",
-    November: "11",
-    December: "12",
-  };
+function parseEventDate(dateString) {
+  const date = new Date(dateString);
+  return new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate()
+  );
+}
 
-  return `${year}-${months[month]}-${day.padStart(2, "0")}`;
+function dateKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatDate(date) {
+  return date.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 }
 
 export default function EventsPage() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [selectedDate, setSelectedDate] = useState("");
+
+  // Start with November 2026, when the first events are scheduled.
+  const [displayedMonth, setDisplayedMonth] = useState(
+    new Date(2026, 10, 1)
+  );
+
+  const year = displayedMonth.getFullYear();
+  const month = displayedMonth.getMonth();
+
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  // Display six calendar rows, including dates from adjacent months.
+  const calendarDays = Array.from({ length: 42 }, (_, index) => {
+    return new Date(year, month, index - firstDay + 1);
+  });
+
+  const eventsByDate = {};
+
+  events.forEach((event) => {
+    const key = dateKey(parseEventDate(event.date));
+    if (!eventsByDate[key]) eventsByDate[key] = [];
+    eventsByDate[key].push(event);
+  });
 
   const filteredEvents = events.filter((event) => {
     const matchesSearch = event.name
@@ -94,10 +124,24 @@ export default function EventsPage() {
       category === "All" || event.category === category;
 
     const matchesDate =
-      !selectedDate || toDateInputValue(event.date) === selectedDate;
+      !selectedDate ||
+      dateKey(parseEventDate(event.date)) === selectedDate;
 
     return matchesSearch && matchesCategory && matchesDate;
   });
+
+  function changeMonth(amount) {
+    setDisplayedMonth(new Date(year, month + amount, 1));
+  }
+
+  function selectDay(day) {
+    setSelectedDate(dateKey(day));
+    setDisplayedMonth(new Date(day.getFullYear(), day.getMonth(), 1));
+  }
+
+  function clearDate() {
+    setSelectedDate("");
+  }
 
   return (
     <section className="section page-section">
@@ -109,30 +153,93 @@ export default function EventsPage() {
         Discover events, meet people, and make memories.
       </p>
 
-      <div className="event-date-filter">
-        <label htmlFor="event-date">
-          Select a date to find available events
-        </label>
+      <div className="event-calendar">
+        <div className="calendar-heading">
+          <div>
+            <p className="calendar-kicker">PLAN YOUR EXPERIENCE</p>
+            <h2>
+              {displayedMonth.toLocaleDateString("en-IN", {
+                month: "long",
+                year: "numeric",
+              })}
+            </h2>
+          </div>
 
-        <div className="date-filter-controls">
-          <input
-            id="event-date"
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-          />
-
-          {selectedDate && (
+          <div className="calendar-navigation">
             <button
               type="button"
-              className="filter-btn"
-              onClick={() => setSelectedDate("")}
+              aria-label="Previous month"
+              onClick={() => changeMonth(-1)}
             >
-              Clear date
+              &#8249;
+            </button>
+            <button
+              type="button"
+              aria-label="Next month"
+              onClick={() => changeMonth(1)}
+            >
+              &#8250;
+            </button>
+          </div>
+        </div>
+
+        <div className="calendar-weekdays">
+          {weekdays.map((day) => (
+            <div key={day}>{day}</div>
+          ))}
+        </div>
+
+        <div className="calendar-grid">
+          {calendarDays.map((day, index) => {
+            const key = dateKey(day);
+            const hasEvents = Boolean(eventsByDate[key]?.length);
+            const isSelected = selectedDate === key;
+            const isCurrentMonth = day.getMonth() === month;
+            const isToday = key === dateKey(new Date());
+
+            return (
+              <button
+                type="button"
+                key={`${key}-${index}`}
+                className={[
+                  "calendar-day",
+                  !isCurrentMonth ? "outside-month" : "",
+                  isSelected ? "selected-day" : "",
+                  isToday ? "today-day" : "",
+                  hasEvents ? "has-events" : "",
+                ].filter(Boolean).join(" ")}
+                aria-label={`${formatDate(day)}${hasEvents ? ", events available" : ""}`}
+                aria-pressed={isSelected}
+                onClick={() => selectDay(day)}
+              >
+                <span>{day.getDate()}</span>
+                {hasEvents && <i className="event-dot" />}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="calendar-legend">
+          <span><i className="event-dot" /> Events scheduled</span>
+          {selectedDate && (
+            <button type="button" onClick={clearDate}>
+              Show all dates
             </button>
           )}
         </div>
       </div>
+
+      {selectedDate && (
+        <p className="selected-date-label">
+          Showing events for {formatDate(
+            new Date(
+              Number(selectedDate.slice(0, 4)),
+              Number(selectedDate.slice(5, 7)) - 1,
+              Number(selectedDate.slice(8, 10))
+            )
+          )}
+        </p>
+      )}
 
       <input
         className="search-input"
@@ -147,9 +254,7 @@ export default function EventsPage() {
           <button
             key={item}
             type="button"
-            className={`filter-btn ${
-              category === item ? "active" : ""
-            }`}
+            className={`filter-btn ${category === item ? "active" : ""}`}
             onClick={() => setCategory(item)}
           >
             {item}
@@ -157,10 +262,8 @@ export default function EventsPage() {
         ))}
       </div>
 
-      <p className="muted">
-        {selectedDate
-          ? `Events on ${selectedDate}: ${filteredEvents.length} found`
-          : `${filteredEvents.length} events found`}
+      <p className="muted event-results-count">
+        {filteredEvents.length} event{filteredEvents.length !== 1 ? "s" : ""} found
       </p>
 
       <div className="event-grid">
@@ -168,21 +271,15 @@ export default function EventsPage() {
           <article className="event-card" key={event.id}>
             <div className={`event-image ${event.style}`}>
               <span>{event.emoji}</span>
-              <span className="event-category">
-                {event.category}
-              </span>
+              <span className="event-category">{event.category}</span>
             </div>
 
             <div className="event-info">
               <p className="event-date">{event.date}</p>
               <h3>{event.name}</h3>
-
               <div className="event-bottom">
                 <strong>₹{event.price}</strong>
-                <Link
-                  className="text-link"
-                  to={`/events/${event.id}`}
-                >
+                <Link className="text-link" to={`/events/${event.id}`}>
                   View details →
                 </Link>
               </div>
@@ -192,9 +289,8 @@ export default function EventsPage() {
       </div>
 
       {filteredEvents.length === 0 && (
-        <p>
-          No events found for your selection. Try another date,
-          category, or search.
+        <p className="no-events-message">
+          No events found for this selection. Try another date or clear your filters.
         </p>
       )}
     </section>
