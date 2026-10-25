@@ -234,3 +234,5 @@ def event_tickets(event_id:int):
         return curr.fetchall()
 
 
+
+
