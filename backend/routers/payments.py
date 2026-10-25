@@ -1,11 +1,3 @@
-from fastapi import APIRouter
-
-router=APIRouter(tags=["payments"])
-
-@router.get("/payments-ping")
-def ping():
-    return {"message":"payments router works"}
-
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException

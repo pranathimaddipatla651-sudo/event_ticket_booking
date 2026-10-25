@@ -121,4 +121,21 @@ def search_events(
         curr.execute(sql+" ORDER BY e.event_date",args)
         return curr.fetchall()
 
+@router.get("/events/{event_id}/tickets")
+def event_tickets(event_id:int):
+    with tx() as curr:
+        curr.execute(
+            "SELECT event_id FROM Events where event_id= %s AND status IN ('published', 'completed')",
+            (event_id,),
+        )
+        if curr.fetchone() is None:
+            raise HTTPException(404,"Event not found")
+        curr.execute(
+            "SELECT ticket_type_id, name, price, available_quantity, "
+            "(available_quantity = 0) AS sold_out "
+            "FROM Ticket_Types WHERE event_id = %s ORDER BY price",
+            (event_id,),
+        )
+        return curr.fetchall()
+
 
