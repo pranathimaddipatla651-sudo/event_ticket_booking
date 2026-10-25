@@ -1,30 +1,73 @@
 
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function handleRegister(event) {
+  const navigate = useNavigate();
+
+  async function handleRegister(event) {
     event.preventDefault();
+    setError("");
+    setSuccess("");
 
     if (password !== confirmPassword) {
-      setMessage("Passwords do not match.");
+      setError("Passwords do not match.");
       return;
     }
 
     if (password.length < 6) {
-      setMessage("Password must contain at least 6 characters.");
+      setError("Password must contain at least 6 characters.");
       return;
     }
 
-    setMessage(
-      "Registration form works! Account creation will be enabled when we connect the backend."
-    );
+    setLoading(true);
+
+    try {
+      const response = await fetch("http://127.0.0.1:8000/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim(),
+          password: password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        const detail = data.detail;
+        throw new Error(
+          typeof detail === "string"
+            ? detail
+            : "Registration failed. Check your details."
+        );
+      }
+
+      setSuccess("Account created successfully! Redirecting to login...");
+
+      setTimeout(() => {
+        navigate("/login");
+      }, 1200);
+    } catch (err) {
+      if (err.message === "Failed to fetch") {
+        setError("Cannot connect to the backend. Check that FastAPI is running.");
+      } else {
+        setError(err.message || "Something went wrong.");
+      }
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -47,9 +90,9 @@ function RegisterPage() {
             required
           />
 
-          <label htmlFor="register-email">Email Address</label>
+          <label htmlFor="email">Email Address</label>
           <input
-            id="register-email"
+            id="email"
             type="email"
             placeholder="Enter your email"
             value={email}
@@ -57,9 +100,9 @@ function RegisterPage() {
             required
           />
 
-          <label htmlFor="register-password">Password</label>
+          <label htmlFor="password">Password</label>
           <input
-            id="register-password"
+            id="password"
             type="password"
             placeholder="At least 6 characters"
             value={password}
@@ -68,30 +111,36 @@ function RegisterPage() {
             required
           />
 
-          <label htmlFor="confirm-password">Confirm Password</label>
+          <label htmlFor="confirmPassword">Confirm Password</label>
           <input
-            id="confirm-password"
+            id="confirmPassword"
             type="password"
             placeholder="Re-enter your password"
             value={confirmPassword}
             onChange={(event) => setConfirmPassword(event.target.value)}
+            minLength={6}
             required
           />
 
-          {message && (
-            <p className="auth-message" role="status">
-              {message}
-            </p>
+          {error && (
+            <p style={{ color: "#c62828", marginTop: 12 }}>{error}</p>
           )}
 
-          <button type="submit" className="auth-button">
-            Create Account
+          {success && (
+            <p style={{ color: "#267348", marginTop: 12 }}>{success}</p>
+          )}
+
+          <button
+            type="submit"
+            className="auth-button"
+            disabled={loading}
+          >
+            {loading ? "Creating Account..." : "Create Account"}
           </button>
         </form>
 
         <p className="auth-switch">
-          Already have an account?{" "}
-          <Link to="/login">Log In</Link>
+          Already have an account? <Link to="/login">Log In</Link>
         </p>
 
         <Link to="/" className="back-home">
