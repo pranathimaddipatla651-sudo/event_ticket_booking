@@ -16,6 +16,7 @@ def get_conn():
         ssl_ca=os.getenv("DB_SSL_CA"),
         cursorclass=pymysql.cursors.DictCursor,
         autocommit=False,
+        init_command="SET time_zone = '+05:30'",
     )
 
 @contextmanager

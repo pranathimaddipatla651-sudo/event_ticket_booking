@@ -1,6 +1,7 @@
 from fastapi import APIRouter,HTTPException
 from pydantic import BaseModel,Field,EmailStr
 from typing import Annotated
+from datetime import date
 
 from core.security import hash_password,verify_password
 from db import tx
@@ -81,4 +82,43 @@ def update_profile(user_id:int,body:profileUpdate):
             values
         )
     return {"user_id":user_id,"changes":list(changes.keys())}
+
+@router.get("/events")
+def search_events(
+    city:str|None=None,
+    category_id:int|None=None,
+    date_from:date|None=None,
+    date_to:date|None=None,
+    keyword:str|None=None
+):
+    sql=(
+        "SELECT e.event_id, e.title, e.event_date, "
+        "v.name AS venue, v.city, c.name AS category "
+        "FROM Events e "
+        "JOIN Venues v ON v.venue_id = e.venue_id "
+        "JOIN Categories c ON c.category_id = e.category_id "
+        "WHERE e.status IN ('published','completed')"
+    )
+    args=[]
+    if not date_from and not date_to:
+        sql+=" AND e.event_date > NOW()"
+    if city:
+        sql+=" AND v.city = %s"
+        args.append(city)
+    if category_id:
+        sql+=" AND e.category_id = %s"
+        args.append(category_id)
+    if date_from:
+        sql+=" AND e.event_date >= %s"
+        args.append(date_from)
+    if date_to:
+        sql+=" AND e.event_date < %s + INTERVAL 1 DAY"
+        args.append(date_to)
+    if keyword:
+        sql+=" AND e.title LIKE %s"
+        args.append(f"%{keyword}%")
+    with tx() as curr:
+        curr.execute(sql+" ORDER BY e.event_date",args)
+        return curr.fetchall()
+
 
