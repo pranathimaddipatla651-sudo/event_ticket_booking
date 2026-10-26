@@ -2,13 +2,16 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
+const API_URL = "http://127.0.0.1:8000";
+
 function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [phone, setPhone] = useState("");
+  const [city, setCity] = useState("");
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
@@ -16,7 +19,6 @@ function RegisterPage() {
   async function handleRegister(event) {
     event.preventDefault();
     setError("");
-    setSuccess("");
 
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
@@ -28,10 +30,15 @@ function RegisterPage() {
       return;
     }
 
+    if (!/^[6-9]\d{9}$/.test(phone.trim())) {
+      setError("Enter a valid 10-digit Indian mobile number.");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/register", {
+      const response = await fetch(`${API_URL}/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -39,7 +46,9 @@ function RegisterPage() {
         body: JSON.stringify({
           name: name.trim(),
           email: email.trim(),
-          password: password,
+          password,
+          phone: phone.trim(),
+          city: city.trim(),
         }),
       });
 
@@ -54,11 +63,9 @@ function RegisterPage() {
         );
       }
 
-      setSuccess("Account created successfully! Redirecting to login...");
-
-      setTimeout(() => {
-        navigate("/login");
-      }, 1200);
+      navigate("/login", {
+        state: { message: "Account created successfully! Please log in." },
+      });
     } catch (err) {
       if (err.message === "Failed to fetch") {
         setError("Cannot connect to the backend. Check that FastAPI is running.");
@@ -71,69 +78,105 @@ function RegisterPage() {
   }
 
   return (
-    <div className="auth-container">
+    <main className="auth-container">
       <div className="auth-card">
-        <h1>Create Account</h1>
-
-        <p className="auth-subtitle">
-          Join EventEase and discover amazing events.
-        </p>
+        <div style={{ textAlign: "center", marginBottom: 24 }}>
+          <div style={{ fontSize: 38 }}>🎟️</div>
+          <h1>Create Account</h1>
+          <p className="auth-subtitle">
+            Join EventEase and discover amazing events.
+          </p>
+        </div>
 
         <form onSubmit={handleRegister}>
-          <label htmlFor="name">Full Name</label>
+          <label htmlFor="register-name">Full Name</label>
           <input
-            id="name"
+            id="register-name"
             type="text"
             placeholder="Enter your full name"
             value={name}
-            onChange={(event) => setName(event.target.value)}
+            onChange={(e) => setName(e.target.value)}
+            autoComplete="name"
+            maxLength={100}
             required
           />
 
-          <label htmlFor="email">Email Address</label>
+          <label htmlFor="register-email">Email Address</label>
           <input
-            id="email"
+            id="register-email"
             type="email"
-            placeholder="Enter your email"
+            placeholder="you@example.com"
             value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
             required
           />
 
-          <label htmlFor="password">Password</label>
+          <label htmlFor="register-phone">Phone Number</label>
           <input
-            id="password"
+            id="register-phone"
+            type="tel"
+            placeholder="10-digit mobile number"
+            value={phone}
+            onChange={(e) =>
+              setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))
+            }
+            autoComplete="tel-national"
+            inputMode="numeric"
+            pattern="[6-9][0-9]{9}"
+            maxLength={10}
+            required
+          />
+
+          <label htmlFor="register-city">City</label>
+          <input
+            id="register-city"
+            type="text"
+            placeholder="Enter your city"
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            autoComplete="address-level2"
+            maxLength={80}
+            required
+          />
+
+          <label htmlFor="register-password">Password</label>
+          <input
+            id="register-password"
             type="password"
             placeholder="At least 6 characters"
             value={password}
-            onChange={(event) => setPassword(event.target.value)}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="new-password"
             minLength={6}
             required
           />
 
-          <label htmlFor="confirmPassword">Confirm Password</label>
+          <label htmlFor="register-confirm-password">
+            Confirm Password
+          </label>
           <input
-            id="confirmPassword"
+            id="register-confirm-password"
             type="password"
             placeholder="Re-enter your password"
             value={confirmPassword}
-            onChange={(event) => setConfirmPassword(event.target.value)}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            autoComplete="new-password"
             minLength={6}
             required
           />
 
           {error && (
-            <p style={{ color: "#c62828", marginTop: 12 }}>{error}</p>
-          )}
-
-          {success && (
-            <p style={{ color: "#267348", marginTop: 12 }}>{success}</p>
+            <p role="alert" style={{ color: "#c62828", marginTop: 12 }}>
+              {error}
+            </p>
           )}
 
           <button
             type="submit"
             className="auth-button"
             disabled={loading}
+            style={{ marginTop: 20 }}
           >
             {loading ? "Creating Account..." : "Create Account"}
           </button>
@@ -147,7 +190,7 @@ function RegisterPage() {
           ← Back to Home
         </Link>
       </div>
-    </div>
+    </main>
   );
 }
 
