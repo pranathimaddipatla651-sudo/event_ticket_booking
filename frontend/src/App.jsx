@@ -13,6 +13,7 @@ import MyBookingsPage from "./pages/MyBookingsPage";
 import TicketDetailsPage from "./pages/TicketDetailsPage";
 import AdminLoginPage from "./pages/AdminLoginPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
+import BookingReviewPage from "./pages/BookingReviewPage";
 
 import "./App.css";
 import "./index.css";
@@ -80,6 +81,7 @@ function App() {
             path="*"
             element={<PlaceholderPage title="404 - Page Not Found" />}
           />
+          <Route path="/booking-review" element={<BookingReviewPage />} />
         </Routes>
       </main>
 
