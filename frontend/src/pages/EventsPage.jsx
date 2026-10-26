@@ -1,298 +1,386 @@
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
-const events = [
-  {
-    id: 1,
-    name: "Campus Music Festival",
-    category: "Music",
-    date: "15 November 2026",
-    price: 299,
-    emoji: "🎸",
-    style: "music",
-  },
-  {
-    id: 2,
-    name: "Future of Technology",
-    category: "Technology",
-    date: "20 November 2026",
-    price: 199,
-    emoji: "💻",
-    style: "technology",
-  },
-  {
-    id: 3,
-    name: "Art & Culture Night",
-    category: "Arts",
-    date: "25 November 2026",
-    price: 149,
-    emoji: "🎨",
-    style: "art",
-  },
-  {
-    id: 4,
-    name: "Startup Connect",
-    category: "Technology",
-    date: "28 November 2026",
-    price: 249,
-    emoji: "🚀",
-    style: "technology",
-  },
-  {
-    id: 5,
-    name: "Live Acoustic Evening",
-    category: "Music",
-    date: "5 December 2026",
-    price: 199,
-    emoji: "🎤",
-    style: "music",
-  },
-  {
-    id: 6,
-    name: "Creative Workshop",
-    category: "Arts",
-    date: "10 December 2026",
-    price: 99,
-    emoji: "🖌️",
-    style: "art",
-  },
-];
+const API_URL = "http://127.0.0.1:8000";
 
-const categories = ["All", "Music", "Technology", "Arts"];
-const weekdays = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
-
-function parseEventDate(dateString) {
-  const date = new Date(dateString);
-  return new Date(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate()
-  );
+function formatPrice(price) {
+  return new Intl.NumberFormat("en-IN", {
+    maximumFractionDigits: 2,
+  }).format(price);
 }
 
-function dateKey(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
+function formatDate(dateValue) {
+  if (!dateValue) return "Date to be announced";
 
-function formatDate(date) {
+  const date = new Date(dateValue);
+
+  if (Number.isNaN(date.getTime())) {
+    return String(dateValue);
+  }
+
   return date.toLocaleDateString("en-IN", {
     day: "numeric",
-    month: "long",
+    month: "short",
     year: "numeric",
   });
 }
 
+function getCategoryIcon(category) {
+  const name = String(category || "").toLowerCase();
+
+  if (name.includes("music")) return "🎵";
+  if (name.includes("tech")) return "💻";
+  if (name.includes("comedy")) return "😂";
+  if (name.includes("art")) return "🎨";
+  if (name.includes("startup") || name.includes("business")) return "🚀";
+  if (name.includes("workshop")) return "🛠️";
+  if (name.includes("sport")) return "🏆";
+  if (name.includes("culture")) return "🎭";
+
+  return "🎟️";
+}
+
+function getEventDateValue(value) {
+  if (!value) return "";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return "";
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
 export default function EventsPage() {
+  const [events, setEvents] = useState([]);
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("All");
+  const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedDate, setSelectedDate] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  // Start with November 2026, when the first events are scheduled.
-  const [displayedMonth, setDisplayedMonth] = useState(
-    new Date(2026, 10, 1)
-  );
+  useEffect(() => {
+    const controller = new AbortController();
 
-  const year = displayedMonth.getFullYear();
-  const month = displayedMonth.getMonth();
+    async function loadEvents() {
+      setLoading(true);
+      setError("");
 
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
+      try {
+        const response = await fetch(`${API_URL}/events`, {
+          signal: controller.signal,
+        });
 
-  // Display six calendar rows, including dates from adjacent months.
-  const calendarDays = Array.from({ length: 42 }, (_, index) => {
-    return new Date(year, month, index - firstDay + 1);
-  });
+        if (!response.ok) {
+          throw new Error(
+            `Could not load events. Server returned ${response.status}.`
+          );
+        }
 
-  const eventsByDate = {};
+        const data = await response.json();
 
-  events.forEach((event) => {
-    const key = dateKey(parseEventDate(event.date));
-    if (!eventsByDate[key]) eventsByDate[key] = [];
-    eventsByDate[key].push(event);
-  });
+        if (!Array.isArray(data)) {
+          throw new Error(
+            "The events API did not return a list. Check your backend endpoint."
+          );
+        }
 
-  const filteredEvents = events.filter((event) => {
-    const matchesSearch = event.name
-      .toLowerCase()
-      .includes(search.toLowerCase());
+        const formattedEvents = data.map((event) => {
+          const tickets = Array.isArray(event.tickets)
+            ? event.tickets
+            : [];
 
-    const matchesCategory =
-      category === "All" || event.category === category;
+          // Get the lowest actual ticket price from the database.
+          const prices = tickets
+            .map((ticket) => Number(ticket.price))
+            .filter(
+              (price) => Number.isFinite(price) && price >= 0
+            );
 
-    const matchesDate =
-      !selectedDate ||
-      dateKey(parseEventDate(event.date)) === selectedDate;
+          return {
+            ...event,
+            id: event.event_id,
+            name: event.title || "Untitled event",
+            category: event.category || "Other",
+            date: event.event_date,
+            venue: event.venue || "Venue not available",
+            city: event.city || "",
+            description:
+              event.description || "Join us for this exciting event.",
+            venueAddress: event.venue_address || "",
+            tickets,
+            price: prices.length > 0 ? Math.min(...prices) : null,
+          };
+        });
 
-    return matchesSearch && matchesCategory && matchesDate;
-  });
+        setEvents(formattedEvents);
+      } catch (err) {
+        if (err.name !== "AbortError") {
+          console.error("Error loading events:", err);
+          setError(
+            err.message ||
+              "Unable to load events. Please check your backend."
+          );
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      }
+    }
 
-  function changeMonth(amount) {
-    setDisplayedMonth(new Date(year, month + amount, 1));
-  }
+    loadEvents();
 
-  function selectDay(day) {
-    setSelectedDate(dateKey(day));
-    setDisplayedMonth(new Date(day.getFullYear(), day.getMonth(), 1));
-  }
+    return () => controller.abort();
+  }, []);
 
-  function clearDate() {
-    setSelectedDate("");
-  }
+  // Build category options from the actual database response.
+  const categories = useMemo(() => {
+    const names = [
+      ...new Set(
+        events
+          .map((event) => event.category)
+          .filter(Boolean)
+      ),
+    ];
+
+    return ["All", ...names.sort((a, b) => a.localeCompare(b))];
+  }, [events]);
+
+  // Apply search, category, and date filters.
+  const filteredEvents = useMemo(() => {
+    const searchText = search.trim().toLowerCase();
+
+    return events.filter((event) => {
+      const matchesSearch =
+        !searchText ||
+        [
+          event.name,
+          event.description,
+          event.category,
+          event.venue,
+          event.city,
+        ].some((value) =>
+          String(value || "").toLowerCase().includes(searchText)
+        );
+
+      const matchesCategory =
+        selectedCategory === "All" ||
+        event.category === selectedCategory;
+
+      const matchesDate =
+        !selectedDate ||
+        getEventDateValue(event.date) === selectedDate;
+
+      return matchesSearch && matchesCategory && matchesDate;
+    });
+  }, [events, search, selectedCategory, selectedDate]);
 
   return (
-    <section className="section page-section">
-      <p className="eyebrow">FIND YOUR NEXT EXPERIENCE</p>
-      <h1 className="page-title">
-        Explore events<span>.</span>
-      </h1>
-      <p className="muted">
-        Discover events, meet people, and make memories.
-      </p>
+    <main className="events-page">
+      <section className="events-hero">
+        <div className="events-hero-content">
+          <span className="events-eyebrow">YOUR NEXT EXPERIENCE</span>
 
-      <div className="event-calendar">
-        <div className="calendar-heading">
+          <h1>Discover Events</h1>
+
+          <p>
+            Find exciting events, explore new experiences, and book
+            your tickets with EventEase.
+          </p>
+
+          <div className="events-search">
+            <span aria-hidden="true">⌕</span>
+
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search events, categories, venues or cities..."
+              aria-label="Search events"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="events-content">
+        <div className="events-section-heading">
           <div>
-            <p className="calendar-kicker">PLAN YOUR EXPERIENCE</p>
-            <h2>
-              {displayedMonth.toLocaleDateString("en-IN", {
-                month: "long",
-                year: "numeric",
-              })}
-            </h2>
+            <h2>Upcoming Events</h2>
+            <p>Explore events and choose the experience you love.</p>
           </div>
 
-          <div className="calendar-navigation">
-            <button
-              type="button"
-              aria-label="Previous month"
-              onClick={() => changeMonth(-1)}
-            >
-              &#8249;
-            </button>
-            <button
-              type="button"
-              aria-label="Next month"
-              onClick={() => changeMonth(1)}
-            >
-              &#8250;
-            </button>
+          {!loading && (
+            <span className="events-count">
+              {filteredEvents.length}{" "}
+              {filteredEvents.length === 1 ? "event" : "events"}
+            </span>
+          )}
+        </div>
+
+        <div className="events-filters">
+          <div className="category-filters">
+            {categories.map((category) => (
+              <button
+                key={category}
+                type="button"
+                className={
+                  selectedCategory === category
+                    ? "category-filter active"
+                    : "category-filter"
+                }
+                onClick={() => setSelectedCategory(category)}
+              >
+                {category}
+              </button>
+            ))}
           </div>
-        </div>
 
-        <div className="calendar-weekdays">
-          {weekdays.map((day) => (
-            <div key={day}>{day}</div>
-          ))}
-        </div>
+          <div className="date-filter">
+            <label htmlFor="event-date">Choose date</label>
 
-        <div className="calendar-grid">
-          {calendarDays.map((day, index) => {
-            const key = dateKey(day);
-            const hasEvents = Boolean(eventsByDate[key]?.length);
-            const isSelected = selectedDate === key;
-            const isCurrentMonth = day.getMonth() === month;
-            const isToday = key === dateKey(new Date());
+            <input
+              id="event-date"
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+            />
 
-            return (
+            {selectedDate && (
               <button
                 type="button"
-                key={`${key}-${index}`}
-                className={[
-                  "calendar-day",
-                  !isCurrentMonth ? "outside-month" : "",
-                  isSelected ? "selected-day" : "",
-                  isToday ? "today-day" : "",
-                  hasEvents ? "has-events" : "",
-                ].filter(Boolean).join(" ")}
-                aria-label={`${formatDate(day)}${hasEvents ? ", events available" : ""}`}
-                aria-pressed={isSelected}
-                onClick={() => selectDay(day)}
+                className="clear-date"
+                onClick={() => setSelectedDate("")}
               >
-                <span>{day.getDate()}</span>
-                {hasEvents && <i className="event-dot" />}
+                Clear
               </button>
-            );
-          })}
+            )}
+          </div>
         </div>
 
-        <div className="calendar-legend">
-          <span><i className="event-dot" /> Events scheduled</span>
-          {selectedDate && (
-            <button type="button" onClick={clearDate}>
-              Show all dates
+        {loading && (
+          <div className="events-message">
+            <span className="events-spinner" />
+            <p>Loading events and ticket prices...</p>
+          </div>
+        )}
+
+        {!loading && error && (
+          <div className="events-message events-error">
+            <h3>Unable to load events</h3>
+            <p>{error}</p>
+            <p>
+              Make sure your FastAPI backend and MySQL database are
+              running, then refresh this page.
+            </p>
+            <button
+              type="button"
+              className="events-retry"
+              onClick={() => window.location.reload()}
+            >
+              Try again
             </button>
-          )}
-        </div>
-      </div>
+          </div>
+        )}
 
-      {selectedDate && (
-        <p className="selected-date-label">
-          Showing events for {formatDate(
-            new Date(
-              Number(selectedDate.slice(0, 4)),
-              Number(selectedDate.slice(5, 7)) - 1,
-              Number(selectedDate.slice(8, 10))
-            )
-          )}
-        </p>
-      )}
+        {!loading && !error && filteredEvents.length === 0 && (
+          <div className="events-message">
+            <div className="events-empty-icon">🎟️</div>
+            <h3>No events found</h3>
+            <p>
+              Try another search, category, or date.
+            </p>
+            <button
+              type="button"
+              className="events-retry"
+              onClick={() => {
+                setSearch("");
+                setSelectedCategory("All");
+                setSelectedDate("");
+              }}
+            >
+              Clear filters
+            </button>
+          </div>
+        )}
 
-      <input
-        className="search-input"
-        type="search"
-        placeholder="Search events by name..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
+        {!loading && !error && filteredEvents.length > 0 && (
+          <div className="events-grid">
+            {filteredEvents.map((event) => (
+              <article className="event-card" key={event.id}>
+                <div className="event-card-art">
+                  <span className="event-card-icon">
+                    {getCategoryIcon(event.category)}
+                  </span>
 
-      <div className="filters">
-        {categories.map((item) => (
-          <button
-            key={item}
-            type="button"
-            className={`filter-btn ${category === item ? "active" : ""}`}
-            onClick={() => setCategory(item)}
-          >
-            {item}
-          </button>
-        ))}
-      </div>
+                  <span className="event-category-badge">
+                    {event.category}
+                  </span>
 
-      <p className="muted event-results-count">
-        {filteredEvents.length} event{filteredEvents.length !== 1 ? "s" : ""} found
-      </p>
+                  <div className="event-card-date">
+                    <span>{formatDate(event.date)}</span>
+                  </div>
+                </div>
 
-      <div className="event-grid">
-        {filteredEvents.map((event) => (
-          <article className="event-card" key={event.id}>
-            <div className={`event-image ${event.style}`}>
-              <span>{event.emoji}</span>
-              <span className="event-category">{event.category}</span>
-            </div>
+                <div className="event-card-body">
+                  <h3>{event.name}</h3>
 
-            <div className="event-info">
-              <p className="event-date">{event.date}</p>
-              <h3>{event.name}</h3>
-              <div className="event-bottom">
-                <strong>₹{event.price}</strong>
-                <Link className="text-link" to={`/events/${event.id}`}>
-                  View details →
-                </Link>
-              </div>
-            </div>
-          </article>
-        ))}
-      </div>
+                  <p className="event-description">
+                    {event.description}
+                  </p>
 
-      {filteredEvents.length === 0 && (
-        <p className="no-events-message">
-          No events found for this selection. Try another date or clear your filters.
-        </p>
-      )}
-    </section>
+                  <div className="event-meta">
+                    <span aria-hidden="true">📍</span>
+                    <span>
+                      {event.venue}
+                      {event.city ? `, ${event.city}` : ""}
+                    </span>
+                  </div>
+
+                  {event.venueAddress && (
+                    <div className="event-address">
+                      {event.venueAddress}
+                    </div>
+                  )}
+
+                  <div className="event-card-footer">
+                    <div className="event-price">
+                      <span className="event-price-label">
+                        Ticket price
+                      </span>
+
+                      <strong>
+                        {event.price !== null
+                          ? `From ₹${formatPrice(event.price)}`
+                          : "Price unavailable"}
+                      </strong>
+                    </div>
+
+                    <Link
+                      to={`/events/${event.id}`}
+                      className="event-details-button"
+                    >
+                      View details <span aria-hidden="true">→</span>
+                    </Link>
+                  </div>
+
+                  {event.tickets.length > 0 && (
+                    <p className="event-ticket-count">
+                      {event.tickets.length} ticket{" "}
+                      {event.tickets.length === 1 ? "type" : "types"}{" "}
+                      available in the database
+                    </p>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+    </main>
   );
 }

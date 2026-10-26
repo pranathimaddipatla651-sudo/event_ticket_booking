@@ -175,6 +175,7 @@ def update_profile(user_id: int, body: ProfileUpdate):
 
 # -------------------- SEARCH EVENTS --------------------
 
+
 @router.get("/events")
 def search_events(
     city: str | None = None,
@@ -183,14 +184,24 @@ def search_events(
     date_to: date | None = None,
     keyword: str | None = None,
 ):
-    sql = (
-        "SELECT e.event_id, e.title, e.event_date, "
-        "v.name AS venue, v.city, c.name AS category "
-        "FROM Events e "
-        "JOIN Venues v ON v.venue_id = e.venue_id "
-        "JOIN Categories c ON c.category_id = e.category_id "
-        "WHERE e.status IN ('published', 'completed')"
-    )
+    sql = """
+        SELECT
+            e.event_id,
+            e.title,
+            e.description,
+            e.event_date,
+            e.status,
+            e.organizer_id,
+            v.name AS venue,
+            v.city,
+            v.address AS venue_address,
+            c.category_id,
+            c.name AS category
+        FROM Events e
+        JOIN Venues v ON v.venue_id = e.venue_id
+        JOIN Categories c ON c.category_id = e.category_id
+        WHERE e.status = 'published'
+    """
 
     args = []
 
@@ -217,9 +228,28 @@ def search_events(
         sql += " AND e.title LIKE %s"
         args.append(f"%{keyword}%")
 
+    sql += " ORDER BY e.event_date"
+
     with tx() as curr:
-        curr.execute(sql + " ORDER BY e.event_date", args)
+        curr.execute(sql, args)
         events = curr.fetchall()
+
+        for event in events:
+            curr.execute(
+                """
+                SELECT
+                    ticket_type_id,
+                    name,
+                    price,
+                    total_quantity,
+                    available_quantity
+                FROM Ticket_Types
+                WHERE event_id = %s
+                ORDER BY price
+                """,
+                (event["event_id"],),
+            )
+            event["tickets"] = curr.fetchall()
 
     return events
 
