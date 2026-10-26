@@ -15,6 +15,7 @@ import AdminLoginPage from "./pages/AdminLoginPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import BookingReviewPage from "./pages/BookingReviewPage";
 import OrganizerDashboardPage from "./pages/OrganizerDashboardPage";
+import ManageEventsBookingsPage from "./pages/ManageEventsBookingsPage";
 
 import "./App.css";
 import "./index.css";
@@ -89,6 +90,10 @@ function App() {
           <Route
   path="/booking-review"
   element={<BookingReviewPage />}
+/>
+<Route
+  path="/admin/manage"
+  element={<ManageEventsBookingsPage />}
 />
 
 <Route
