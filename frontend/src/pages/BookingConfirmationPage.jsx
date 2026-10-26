@@ -1,67 +1,131 @@
 
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
-function BookingConfirmationPage() {
-  const { id } = useParams();
+const API_URL = "http://127.0.0.1:8000";
 
-  const bookings = JSON.parse(
-    localStorage.getItem("eventEaseBookings") || "[]"
-  );
+export default function BookingConfirmationPage() {
+  const { bookingId } = useParams();
 
-  const booking = bookings.find(
-    (item) => item.id === id
-  );
+  const [booking, setBooking] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  if (!booking) {
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadBooking() {
+      try {
+        setLoading(true);
+        setError("");
+
+        const response = await fetch(
+          `${API_URL}/bookings/${bookingId}`,
+          { signal: controller.signal }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.detail || "Could not find this booking."
+          );
+        }
+
+        setBooking(data);
+      } catch (err) {
+        if (err.name !== "AbortError") {
+          setError(
+            err.message === "Failed to fetch"
+              ? "Cannot connect to the backend. Check that your server is running."
+              : err.message
+          );
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    if (bookingId) {
+      loadBooking();
+    } else {
+      setError("Booking ID is missing.");
+      setLoading(false);
+    }
+
+    return () => controller.abort();
+  }, [bookingId]);
+
+  if (loading) {
     return (
-      <div className="booking-container">
+      <section className="section">
         <div className="booking-card">
-          <h1>Booking Not Found</h1>
-          <p>Please make a booking first.</p>
-          <Link to="/events">Browse Events</Link>
+          <h1>Loading confirmation...</h1>
         </div>
-      </div>
+      </section>
+    );
+  }
+
+  if (error || !booking) {
+    return (
+      <section className="section">
+        <div className="booking-card">
+          <h1>Unable to load booking</h1>
+          <p>{error || "Booking not found."}</p>
+          <Link to="/my-bookings">My Bookings</Link>
+          {" · "}
+          <Link to="/events">Explore Events</Link>
+        </div>
+      </section>
     );
   }
 
   return (
-    <div className="booking-container">
+    <section className="section">
       <div className="booking-card">
-        <h1>🎉 Booking Confirmed!</h1>
-        <p>Your demo booking has been saved successfully.</p>
+        <p className="eyebrow">EVENTEASE</p>
+
+        <h1>Booking Confirmed!</h1>
+        <p>Your booking details have been retrieved from the database.</p>
+
+        <h2>Booking ID: #{booking.booking_id}</h2>
+
+        <p>
+          <strong>Status:</strong> {booking.status}
+        </p>
+
+        <p>
+          <strong>Total paid/amount:</strong>{" "}
+          ₹{Number(booking.total_amount).toLocaleString("en-IN")}
+        </p>
 
         <hr />
 
-        <h2>{booking.eventName}</h2>
-        <p><strong>Booking ID:</strong> {booking.id}</p>
-        <p><strong>Date:</strong> {booking.date}</p>
-        <p><strong>Venue:</strong> {booking.venue}</p>
-        <p><strong>Tickets:</strong> {booking.quantity}</p>
-        <p>
-          <strong>Total Paid:</strong> ₹
-          {booking.total.toLocaleString("en-IN")}
-        </p>
+        <h2>Ticket details</h2>
 
-        <Link
-          to="/my-bookings"
-          className="booking-button"
-          style={{
-            display: "block",
-            textAlign: "center",
-            textDecoration: "none",
-            boxSizing: "border-box",
-            marginTop: "20px",
-          }}
-        >
-          View My Bookings
-        </Link>
+        {booking.items?.map((item, index) => (
+          <div key={index}>
+            <h3>{item.event}</h3>
+            <p>Date: {item.event_date || "To be announced"}</p>
+            <p>Ticket type: {item.ticket_type}</p>
+            <p>Quantity: {item.quantity}</p>
+            <p>
+              Price per ticket: ₹
+              {Number(item.unit_price).toLocaleString("en-IN")}
+            </p>
+          </div>
+        ))}
 
         <p>
-          <Link to="/events">Explore More Events</Link>
+          <Link to="/my-bookings" className="btn btn-primary">
+            View My Bookings
+          </Link>
         </p>
+
+        <Link to="/events">Explore more events</Link>
       </div>
-    </div>
+    </section>
   );
 }
-
-export default BookingConfirmationPage;
