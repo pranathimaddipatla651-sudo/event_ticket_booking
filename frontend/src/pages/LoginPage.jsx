@@ -119,10 +119,6 @@ function LoginPage() {
           Don't have an account? <Link to="/register">Sign Up</Link>
         </p>
 
-        <p className="auth-switch">
-          Are you an admin? <Link to="/admin-login">Admin Login</Link>
-        </p>
-
         <Link to="/" className="back-home">← Back to Home</Link>
       </div>
     </div>
