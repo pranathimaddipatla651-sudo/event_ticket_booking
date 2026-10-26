@@ -5,12 +5,8 @@ import { Link } from "react-router-dom";
 const API_URL = "http://127.0.0.1:8000";
 
 function AdminDashboardPage() {
-  const [summary, setSummary] = useState({
-    events: [],
-    bookings: [],
-    users: [],
-    revenue: 0,
-  });
+  const [summary, setSummary] = useState(null);
+  const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -20,31 +16,30 @@ function AdminDashboardPage() {
         setLoading(true);
         setError("");
 
-        // These values are temporary fallbacks until we connect
-        // the dashboard to your actual admin API.
-        const events = JSON.parse(
-          localStorage.getItem("eventEaseEvents") || "[]"
-        );
-        const bookings = JSON.parse(
-          localStorage.getItem("eventEaseBookings") || "[]"
-        );
+        const [summaryResponse, bookingsResponse] = await Promise.all([
+          fetch(`${API_URL}/admin/dashboard/summary`),
+          fetch(`${API_URL}/admin/bookings`),
+        ]);
 
-        setSummary({
-          events,
-          bookings,
-          users: [],
-          revenue: bookings
-            .filter(
-              (booking) =>
-                String(booking.status).toLowerCase() !== "cancelled"
-            )
-            .reduce(
-              (sum, booking) => sum + Number(booking.total || 0),
-              0
-            ),
-        });
-      } catch {
-        setError("Unable to load dashboard information.");
+        if (!summaryResponse.ok) {
+          throw new Error("Could not load dashboard statistics.");
+        }
+
+        const summaryData = await summaryResponse.json();
+        setSummary(summaryData);
+
+        if (bookingsResponse.ok) {
+          const bookingsData = await bookingsResponse.json();
+          setBookings(
+            Array.isArray(bookingsData)
+              ? bookingsData
+              : bookingsData.bookings || []
+          );
+        }
+      } catch (err) {
+        setError(
+          `${err.message} Check that your FastAPI backend is running.`
+        );
       } finally {
         setLoading(false);
       }
@@ -53,56 +48,57 @@ function AdminDashboardPage() {
     loadDashboard();
   }, []);
 
-  const activeBookings = summary.bookings.filter(
-    (booking) =>
-      String(booking.status).toLowerCase() !== "cancelled"
-  );
+  if (loading) {
+    return (
+      <main className="admin-container">
+        <p>Loading dashboard from database...</p>
+      </main>
+    );
+  }
 
-  const cancelledBookings = summary.bookings.filter(
-    (booking) =>
-      String(booking.status).toLowerCase() === "cancelled"
-  );
+  if (error) {
+    return (
+      <main className="admin-container">
+        <h1>Admin Dashboard</h1>
+        <p className="admin-error">{error}</p>
+        <button
+          className="admin-manage-button"
+          onClick={() => window.location.reload()}
+        >
+          Try again
+        </button>
+      </main>
+    );
+  }
 
   const stats = [
     {
-      title: "Total Events",
-      value: summary.events.length,
-      icon: "🎉",
+      title: "Total Users",
+      value: summary?.total_users ?? 0,
+      icon: "👥",
       color: "purple",
     },
     {
-      title: "Total Bookings",
-      value: summary.bookings.length,
-      icon: "🎟️",
+      title: "Total Venues",
+      value: summary?.total_venues ?? 0,
+      icon: "📍",
       color: "blue",
     },
     {
-      title: "Active Bookings",
-      value: activeBookings.length,
-      icon: "✓",
+      title: "Categories",
+      value: summary?.total_categories ?? 0,
+      icon: "🎭",
       color: "green",
     },
     {
-      title: "Cancelled",
-      value: cancelledBookings.length,
-      icon: "↩",
-      color: "orange",
-    },
-    {
-      title: "Booking Revenue",
-      value: `₹${summary.revenue.toLocaleString("en-IN")}`,
+      title: "Total Revenue",
+      value: `₹${Number(
+        summary?.total_revenue ?? 0
+      ).toLocaleString("en-IN")}`,
       icon: "₹",
       color: "pink",
     },
   ];
-
-  if (loading) {
-    return (
-      <div className="admin-container">
-        <p>Loading your dashboard...</p>
-      </div>
-    );
-  }
 
   return (
     <main className="admin-container">
@@ -110,15 +106,13 @@ function AdminDashboardPage() {
         <div>
           <span className="admin-eyebrow">EVENTEASE MANAGEMENT</span>
           <h1>Admin Dashboard</h1>
-          <p>Monitor your events, bookings, and sales in one place.</p>
+          <p>Monitor your event platform and database reports.</p>
         </div>
 
         <Link to="/admin/manage" className="admin-manage-button">
-          + Manage Events & Bookings
+          Manage Events & Bookings →
         </Link>
       </header>
-
-      {error && <p className="admin-error">{error}</p>}
 
       <section className="admin-stats">
         {stats.map((stat) => (
@@ -139,18 +133,22 @@ function AdminDashboardPage() {
         <div className="admin-section-heading">
           <div>
             <h2>Recent Bookings</h2>
-            <p>Latest customer booking activity</p>
+            <p>Latest bookings recorded by the system</p>
           </div>
+
           <Link to="/admin/manage" className="admin-view-all">
             Manage bookings →
           </Link>
         </div>
 
-        {summary.bookings.length === 0 ? (
+        {bookings.length === 0 ? (
           <div className="admin-empty">
-            <span>🎫</span>
-            <h3>No bookings yet</h3>
-            <p>Customer bookings will appear here when available.</p>
+            <span>🎟️</span>
+            <h3>No booking records returned</h3>
+            <p>
+              The bookings endpoint may not be implemented yet, or there
+              may be no bookings.
+            </p>
           </div>
         ) : (
           <div className="admin-table-wrapper">
@@ -159,59 +157,41 @@ function AdminDashboardPage() {
                 <tr>
                   <th>Booking ID</th>
                   <th>Event</th>
-                  <th>Tickets</th>
                   <th>Amount</th>
                   <th>Status</th>
                 </tr>
               </thead>
 
               <tbody>
-                {[...summary.bookings].reverse().slice(0, 5).map(
-                  (booking, index) => {
-                    const status = String(
-                      booking.status || "Confirmed"
-                    ).toLowerCase();
-
-                    return (
-                      <tr key={booking.id ?? booking.booking_id ?? index}>
-                        <td>
-                          <strong>
-                            #{booking.id ?? booking.booking_id ?? "—"}
-                          </strong>
-                        </td>
-                        <td>
-                          {booking.eventName ??
-                            booking.event ??
-                            booking.title ??
-                            "Event"}
-                        </td>
-                        <td>
-                          {booking.quantity ??
-                            booking.ticket_quantity ??
-                            "—"}
-                        </td>
-                        <td>
-                          ₹
-                          {Number(
-                            booking.total ??
-                              booking.total_amount ??
-                              0
-                          ).toLocaleString("en-IN")}
-                        </td>
-                        <td>
-                          <span
-                            className={`admin-status status-${status.replace(
-                              /\s+/g,
-                              "-"
-                            )}`}
-                          >
-                            {booking.status || "Confirmed"}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  }
-                )}
+                {bookings.slice(-5).reverse().map((booking, index) => (
+                  <tr
+                    key={booking.booking_id ?? booking.id ?? index}
+                  >
+                    <td>
+                      <strong>
+                        #{booking.booking_id ?? booking.id ?? "—"}
+                      </strong>
+                    </td>
+                    <td>
+                      {booking.event ?? booking.eventName ?? "Event"}
+                    </td>
+                    <td>
+                      ₹
+                      {Number(
+                        booking.total_amount ?? booking.total ?? 0
+                      ).toLocaleString("en-IN")}
+                    </td>
+                    <td>
+                      <span
+                        className={`admin-status status-${String(
+                          booking.status || "confirmed"
+                        ).toLowerCase()}`}
+                      >
+                        {booking.status || "Confirmed"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -223,7 +203,7 @@ function AdminDashboardPage() {
           <span>🎪</span>
           <div>
             <strong>Manage Events</strong>
-            <p>Create and update event information</p>
+            <p>Manage event information and ticket availability.</p>
           </div>
           <span className="admin-arrow">→</span>
         </Link>
@@ -232,7 +212,7 @@ function AdminDashboardPage() {
           <span>📋</span>
           <div>
             <strong>Manage Bookings</strong>
-            <p>Review customer booking records</p>
+            <p>Review customer bookings and their status.</p>
           </div>
           <span className="admin-arrow">→</span>
         </Link>
