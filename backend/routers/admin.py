@@ -1,11 +1,3 @@
-from fastapi import APIRouter
-
-router =APIRouter(prefix="/admin",tags=['admin'])
-
-@router.get("/ping")
-def ping():
-    return {"message":"admin router is working"}
-
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional, Literal

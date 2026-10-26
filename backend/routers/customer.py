@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field, EmailStr
 from datetime import date
 
 from core.security import hash_password, verify_password
+from core.booking import Item,book,cancel_booking_tx
 from db import tx
 
 router = APIRouter(tags=["customer"])
@@ -29,6 +30,10 @@ class ProfileUpdate(BaseModel):
     phone: str | None = Field(default=None, pattern=r"^[6-9]\d{9}$")
     city: str | None = None
 
+class BookingIn(BaseModel):
+    user_id: int
+    items: list[Item] = Field(min_length=1)
+
 
 # -------------------- CUSTOMER REGISTRATION --------------------
 
@@ -51,7 +56,7 @@ def register(body: Register):
         )
         user_id = curr.lastrowid
 
-    return {"userID": user_id}
+    return {"user_id": user_id}
 
 
 # -------------------- CUSTOMER LOGIN --------------------
@@ -216,6 +221,8 @@ def search_events(
         curr.execute(sql + " ORDER BY e.event_date", args)
         events = curr.fetchall()
 
+    return events
+
 @router.get("/events/{event_id}/tickets")
 def event_tickets(event_id:int):
     with tx() as curr:
@@ -232,6 +239,65 @@ def event_tickets(event_id:int):
             (event_id,),
         )
         return curr.fetchall()
+
+@router.post("/bookings", status_code=201)
+def create_booking(body: BookingIn):
+    with tx() as curr:
+        booking_id = book(curr, body.user_id, body.items)
+    return {"booking_id": booking_id, "status": "confirmed"}
+
+
+@router.post("/bookings/{booking_id}/cancel")
+def cancel_booking(booking_id: int, user_id: int):
+    with tx() as curr:
+        cancel_booking_tx(curr, booking_id, user_id=user_id)
+    return {"booking_id": booking_id, "status": "cancelled"}
+
+
+@router.get("/users/{user_id}/bookings")
+def booking_history(user_id: int):
+    with tx() as curr:
+        curr.execute("SELECT user_id FROM Users WHERE user_id = %s", (user_id,))
+        if curr.fetchone() is None:
+            raise HTTPException(404, "User not found")
+        curr.execute(
+            "SELECT b.booking_id, b.booking_date, b.total_amount, b.status, "
+            "e.event_id, e.title AS event, tt.name AS ticket_type, "
+            "bi.quantity, bi.unit_price "
+            "FROM Bookings b "
+            "JOIN Booking_Items bi ON bi.booking_id = b.booking_id "
+            "JOIN Ticket_Types tt ON tt.ticket_type_id = bi.ticket_type_id "
+            "JOIN Events e ON e.event_id = tt.event_id "
+            "WHERE b.user_id = %s "
+            "ORDER BY b.booking_date DESC, b.booking_id DESC",
+            (user_id,),
+        )
+        return curr.fetchall()
+
+
+@router.get("/bookings/{booking_id}")
+def booking_details(booking_id: int):
+    with tx() as curr:
+        curr.execute(
+            "SELECT booking_id, user_id, booking_date, total_amount, status "
+            "FROM Bookings WHERE booking_id = %s",
+            (booking_id,),
+        )
+        booking = curr.fetchone()
+        if booking is None:
+            raise HTTPException(404, "Booking not found")
+        curr.execute(
+            "SELECT e.title AS event, e.event_date, tt.name AS ticket_type, "
+            "bi.quantity, bi.unit_price "
+            "FROM Booking_Items bi "
+            "JOIN Ticket_Types tt ON tt.ticket_type_id = bi.ticket_type_id "
+            "JOIN Events e ON e.event_id = tt.event_id "
+            "WHERE bi.booking_id = %s",
+            (booking_id,),
+        )
+        booking["items"] = curr.fetchall()
+    return booking
+
 
 
 
