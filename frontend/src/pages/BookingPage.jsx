@@ -27,13 +27,13 @@ function BookingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const user = (() => {
-    try {
-      return JSON.parse(localStorage.getItem("eventEaseUser") || "null");
-    } catch {
-      return null;
-    }
-  })();
+  const [user] = useState(() => {
+  try {
+    return JSON.parse(localStorage.getItem("eventEaseUser") || "null");
+  } catch {
+    return null;
+  }
+});
 
   useEffect(() => {
     if (!user) {
