@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field, EmailStr
 from datetime import date
 
 from core.security import hash_password, verify_password
+from core.booking import Item,book
 from db import tx
 
 router = APIRouter(tags=["customer"])
@@ -232,6 +233,8 @@ def event_tickets(event_id:int):
             (event_id,),
         )
         return curr.fetchall()
+
+
 
 
 
