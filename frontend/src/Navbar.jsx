@@ -1,15 +1,25 @@
 
 import { Link, NavLink, useNavigate } from "react-router-dom";
 
+function getStoredUser() {
+  try {
+    return JSON.parse(localStorage.getItem("eventEaseUser") || "null");
+  } catch {
+    return null;
+  }
+}
+
 function Navbar() {
   const navigate = useNavigate();
+  const user = getStoredUser();
+  const role = String(user?.role || "").toLowerCase();
+  const loggedIn = Boolean(user);
 
-  const isAdminLoggedIn =
-    localStorage.getItem("eventEaseAdminLoggedIn") === "true";
-
-  function handleAdminLogout() {
+  function logout() {
+    localStorage.removeItem("eventEaseUser");
+    localStorage.removeItem("eventEaseToken");
     localStorage.removeItem("eventEaseAdminLoggedIn");
-    navigate("/admin-login");
+    navigate("/", { replace: true });
     window.location.reload();
   }
 
@@ -20,47 +30,56 @@ function Navbar() {
       </Link>
 
       <div className="navbar-links">
-        <NavLink to="/" end>
-          Home
-        </NavLink>
+        <NavLink to="/" end>Home</NavLink>
+        <NavLink to="/events">Explore Events</NavLink>
 
-        <NavLink to="/events">
-          Explore Events
-        </NavLink>
+        {role === "customer" && (
+          <NavLink to="/my-bookings">My Bookings</NavLink>
+        )}
 
-        <NavLink to="/my-bookings">
-          My Bookings
-        </NavLink>
+        {role === "admin" && (
+          <NavLink to="/admin">Admin Dashboard</NavLink>
+        )}
 
-        {isAdminLoggedIn && (
-          <NavLink to="/admin">
-            Admin Dashboard
-          </NavLink>
+        {role === "organizer" && (
+          <NavLink to="/manage-events">Manage Events</NavLink>
         )}
       </div>
 
       <div className="navbar-auth">
-        {isAdminLoggedIn ? (
-          <button
-            type="button"
-            className="login-link navbar-logout"
-            onClick={handleAdminLogout}
-          >
-            Admin Logout
-          </button>
+        {!loggedIn ? (
+          <>
+            <NavLink to="/admin-login" className="login-link">
+              Admin Login
+            </NavLink>
+            <NavLink to="/login" className="login-link">
+              Log in
+            </NavLink>
+            <NavLink to="/register" className="signup-link">
+              Sign up
+            </NavLink>
+          </>
         ) : (
-          <NavLink to="/admin-login" className="login-link">
-            Admin Login
-          </NavLink>
+          <>
+            <span className="login-link">
+              Hi, {user.name || user.full_name || user.email || "User"}
+            </span>
+
+            {role === "customer" && (
+              <NavLink to="/my-bookings" className="login-link">
+                My Profile
+              </NavLink>
+            )}
+
+            <button
+              type="button"
+              className="login-link navbar-logout"
+              onClick={logout}
+            >
+              Log out
+            </button>
+          </>
         )}
-
-        <NavLink to="/login" className="login-link">
-          Log in
-        </NavLink>
-
-        <NavLink to="/register" className="signup-link">
-          Sign up
-        </NavLink>
       </div>
     </nav>
   );
