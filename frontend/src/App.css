@@ -577,3 +577,134 @@
     padding: 18px;
   }
 }
+
+/* Home page database-driven event cards */
+
+.home-page .event-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 26px;
+  margin-top: 30px;
+}
+
+.home-page .event-card {
+  overflow: hidden;
+  min-width: 0;
+  padding: 0;
+  background: #fff;
+  border: 1px solid #eee9f3;
+  border-radius: 20px;
+  box-shadow: 0 8px 25px rgba(40, 25, 70, 0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.home-page .event-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 14px 32px rgba(40, 25, 70, 0.12);
+}
+
+.home-page .event-image {
+  height: 190px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 64px;
+}
+
+.home-page .event-image.music {
+  background: #e9e0f7;
+}
+
+.home-page .event-image.technology {
+  background: #dceaf0;
+}
+
+.home-page .event-image.art {
+  background: #f4e0ce;
+}
+
+.home-page .event-image.other {
+  background: #e1eee7;
+}
+
+.home-event-info {
+  padding: 22px;
+}
+
+.home-event-category {
+  margin: 0 0 8px;
+  color: #236c54;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.home-event-info h3 {
+  margin: 0 0 12px;
+  color: #222b29;
+  font-size: 20px;
+  line-height: 1.4;
+}
+
+.home-event-description {
+  color: #777b79;
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 44px;
+}
+
+.home-event-location {
+  color: #656d69;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.home-event-price {
+  color: #236c54;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.home-event-link {
+  display: inline-block;
+  margin-top: 5px;
+  color: #176449;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.home-event-link:hover {
+  text-decoration: underline;
+}
+
+.home-events-message {
+  margin-top: 25px;
+  padding: 25px;
+  border-radius: 14px;
+  background: #fff;
+  color: #555;
+}
+
+.home-view-all {
+  display: flex;
+  justify-content: center;
+  margin-top: 35px;
+}
+
+@media (max-width: 900px) {
+  .home-page .event-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .home-page .event-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .home-page .event-image {
+    height: 165px;
+  }
+}
