@@ -1,132 +1,196 @@
 
-import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
-function readUser() {
-  try {
-    return JSON.parse(localStorage.getItem("eventEaseUser") || "null");
-  } catch {
-    return null;
-  }
-}
+const API_URL = "http://127.0.0.1:8000";
 
-function MyBookingsPage() {
-  const navigate = useNavigate();
-  const [user] = useState(readUser);
+export default function MyBookingsPage() {
   const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [cancelingId, setCancelingId] = useState(null);
 
-  useEffect(() => {
-    if (!user) {
-      navigate(
-        `/login?redirect=${encodeURIComponent("/my-bookings")}`,
-        { replace: true }
-      );
+  let user = null;
+
+  try {
+    user = JSON.parse(localStorage.getItem("eventEaseUser") || "null");
+  } catch {
+    user = null;
+  }
+
+  async function loadBookings(signal) {
+    if (!user?.user_id) {
+      setError("Please log in to view your bookings.");
+      setLoading(false);
       return;
     }
 
     try {
-      const saved = JSON.parse(
-        localStorage.getItem("eventEaseBookings") || "[]"
+      setError("");
+
+      const response = await fetch(
+        `${API_URL}/users/${user.user_id}/bookings`,
+        { signal }
       );
 
-      const userKey = String(user.user_id ?? user.id ?? user.email ?? "");
+      const data = await response.json();
 
-      setBookings(
-        saved.filter((booking) => {
-          // Older browser-only bookings may not have an owner field.
-          if (booking.userKey == null) return true;
-          return String(booking.userKey) === userKey;
-        })
-      );
-    } catch {
-      setBookings([]);
+      if (!response.ok) {
+        throw new Error(data.detail || "Unable to load bookings.");
+      }
+
+      setBookings(data);
+    } catch (err) {
+      if (err.name !== "AbortError") {
+        setError(
+          err.message === "Failed to fetch"
+            ? "Cannot connect to the backend. Check that it is running."
+            : err.message
+        );
+      }
+    } finally {
+      if (!signal?.aborted) setLoading(false);
     }
-  }, [navigate, user]);
-
-  function cancelBooking(id) {
-    const updated = bookings.map((booking) =>
-      String(booking.id) === String(id)
-        ? { ...booking, status: "Cancelled" }
-        : booking
-    );
-
-    setBookings(updated);
-
-    // Preserve other saved records in the browser.
-    const allBookings = JSON.parse(
-      localStorage.getItem("eventEaseBookings") || "[]"
-    );
-
-    const updatedAll = allBookings.map((booking) =>
-      String(booking.id) === String(id)
-        ? { ...booking, status: "Cancelled" }
-        : booking
-    );
-
-    localStorage.setItem("eventEaseBookings", JSON.stringify(updatedAll));
   }
 
-  if (!user) return null;
+  useEffect(() => {
+    const controller = new AbortController();
+    loadBookings(controller.signal);
+    return () => controller.abort();
+  }, []);
+
+  async function handleCancel(bookingId) {
+    if (!user?.user_id) return;
+
+    if (!window.confirm("Are you sure you want to cancel this booking?")) {
+      return;
+    }
+
+    setCancelingId(bookingId);
+    setError("");
+
+    try {
+      const response = await fetch(
+        `${API_URL}/bookings/${bookingId}/cancel?user_id=${user.user_id}`,
+        { method: "POST" }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Unable to cancel booking.");
+      }
+
+      await loadBookings();
+    } catch (err) {
+      setError(err.message || "Unable to cancel booking.");
+    } finally {
+      setCancelingId(null);
+    }
+  }
+
+  if (loading) {
+    return (
+      <section className="section">
+        <div className="booking-card">
+          <h1>My Bookings</h1>
+          <p>Loading your bookings...</p>
+        </div>
+      </section>
+    );
+  }
 
   return (
-    <div className="booking-container">
+    <section className="section">
       <div className="booking-card">
         <h1>My Bookings</h1>
         <p>View and manage your event tickets.</p>
 
-        {bookings.length === 0 ? (
-          <div>
+        {error && (
+          <p role="alert" style={{ color: "#c62828" }}>
+            {error}
+          </p>
+        )}
+
+        {!user?.user_id ? (
+          <Link to="/login">Log in</Link>
+        ) : bookings.length === 0 ? (
+          <>
             <p>You have no bookings saved here yet.</p>
-            <Link to="/events" className="booking-button">
+            <Link to="/events" className="btn btn-primary">
               Explore Events
             </Link>
-          </div>
+          </>
         ) : (
-          bookings.map((booking) => (
-            <div className="booking-event" key={booking.id}>
-              <h2>{booking.eventName}</h2>
+          <div className="my-bookings-list">
+            {bookings.map((booking) => (
+              <article
+                key={`${booking.booking_id}-${booking.ticket_type}`}
+                className="booking-item"
+              >
+                <h2>{booking.event}</h2>
 
-              <p><strong>Booking ID:</strong> {booking.id}</p>
-              <p><strong>Date:</strong> {booking.date}</p>
-              <p><strong>Venue:</strong> {booking.venue}</p>
-              <p><strong>Ticket type:</strong> {booking.ticketType || "Standard"}</p>
-              <p><strong>Tickets:</strong> {booking.quantity}</p>
-              <p>
-                <strong>Total:</strong>{" "}
-                ₹{Number(booking.total || 0).toLocaleString("en-IN")}
-              </p>
-              <p>
-                <strong>Status:</strong> {booking.status || "Pending"}
-              </p>
+                <p>
+                  <strong>Booking ID:</strong> #{booking.booking_id}
+                </p>
 
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                {booking.status !== "Cancelled" && (
-                  <Link
-                    to={`/ticket/${booking.id}`}
-                    className="booking-button"
-                    style={{ width: "auto", textDecoration: "none" }}
-                  >
-                    View Ticket
-                  </Link>
+                <p>
+                  <strong>Ticket:</strong> {booking.ticket_type}
+                </p>
+
+                <p>
+                  <strong>Quantity:</strong> {booking.quantity}
+                </p>
+
+                <p>
+                  <strong>Price per ticket:</strong>{" "}
+                  ₹{Number(booking.unit_price).toLocaleString("en-IN")}
+                </p>
+
+                <p>
+                  <strong>Booking total:</strong>{" "}
+                  ₹{Number(booking.total_amount).toLocaleString("en-IN")}
+                </p>
+
+                <p>
+                  <strong>Status:</strong> {booking.status}
+                </p>
+
+                <Link to={`/booking-confirmation/${booking.booking_id}`}>
+                  View booking
+                </Link>
+
+                {booking.status !== "cancelled" && (
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => handleCancel(booking.booking_id)}
+                      disabled={cancelingId === booking.booking_id}
+                    >
+                      {cancelingId === booking.booking_id
+                        ? "Cancelling..."
+                        : "Cancel booking"}
+                    </button>
+                  </div>
                 )}
-
-                {booking.status !== "Cancelled" && (
-                  <button
-                    type="button"
-                    className="booking-button"
-                    style={{ background: "#c0392b", width: "auto" }}
-                    onClick={() => cancelBooking(booking.id)}
-                  >
-                    Cancel Booking
-                  </button>
-                )}
-              </div>
-            </div>
-          ))
+              </article>
+            ))}
+          </div>
         )}
       </div>
-    </div>
+    </section>
   );
-}
+  <div className="my-bookings-container">
+  <div className="my-bookings-header">
+    <h1>My Bookings</h1>
+    <p>View and manage your event tickets.</p>
+  </div>
 
-export default MyBookingsPage;
+  <div className="booking-list">
+    {/* Keep your existing booking map here */}
+    <div className="booking-item">
+      {/* Keep your existing event and booking details here */}
+    </div>
+  </div>
+</div>
+}
