@@ -1,103 +1,110 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
-const events = [
-  {
-    id: 1,
-    name: "Campus Music Festival",
-    category: "Music",
-    date: "15 November 2026",
-    time: "5:00 PM onwards",
-    venue: "College Auditorium",
-    price: 299,
-    emoji: "🎸",
-    style: "music",
-    description:
-      "Enjoy an exciting evening of live music, performances, and unforgettable moments with friends.",
-  },
-  {
-    id: 2,
-    name: "Future of Technology",
-    category: "Technology",
-    date: "20 November 2026",
-    time: "10:00 AM onwards",
-    venue: "Main Seminar Hall",
-    price: 199,
-    emoji: "💻",
-    style: "technology",
-    description:
-      "Explore emerging technologies, connect with innovators, and discover ideas shaping the future.",
-  },
-  {
-    id: 3,
-    name: "Art & Culture Night",
-    category: "Arts",
-    date: "25 November 2026",
-    time: "4:00 PM onwards",
-    venue: "College Open Grounds",
-    price: 149,
-    emoji: "🎨",
-    style: "art",
-    description:
-      "Experience creativity through art, cultural performances, and student talent.",
-  },
-  {
-    id: 4,
-    name: "Startup Connect",
-    category: "Technology",
-    date: "28 November 2026",
-    time: "11:00 AM onwards",
-    venue: "Innovation Centre",
-    price: 249,
-    emoji: "🚀",
-    style: "technology",
-    description:
-      "Meet aspiring founders, exchange ideas, and learn about building new ventures.",
-  },
-  {
-    id: 5,
-    name: "Live Acoustic Evening",
-    category: "Music",
-    date: "5 December 2026",
-    time: "6:00 PM onwards",
-    venue: "College Amphitheatre",
-    price: 199,
-    emoji: "🎤",
-    style: "music",
-    description:
-      "Relax with live acoustic performances in a friendly and welcoming atmosphere.",
-  },
-  {
-    id: 6,
-    name: "Creative Workshop",
-    category: "Arts",
-    date: "10 December 2026",
-    time: "2:00 PM onwards",
-    venue: "Creative Studio",
-    price: 99,
-    emoji: "🖌️",
-    style: "art",
-    description:
-      "Take part in a hands-on workshop and explore your creative side.",
-  },
-];
+const API_URL = "http://127.0.0.1:8000";
+
+function formatDate(value) {
+  if (!value) return "Date to be announced";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
+
+  return date.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
 
 export default function EventDetailsPage() {
   const { id } = useParams();
-  const event = events.find((item) => item.id === Number(id));
-  const [quantity, setQuantity] = useState(1);
 
-  if (!event) {
+  const [event, setEvent] = useState(null);
+  const [quantity, setQuantity] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadEvent() {
+      try {
+        setLoading(true);
+        setError("");
+        setEvent(null);
+        setQuantity(1);
+
+        const response = await fetch(`${API_URL}/events`, {
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error("Could not load events.");
+        }
+
+        const data = await response.json();
+
+        const selectedEvent = data.find(
+          (item) => String(item.event_id) === String(id)
+        );
+
+        if (!selectedEvent) {
+          throw new Error("Event not found.");
+        }
+
+        setEvent(selectedEvent);
+      } catch (err) {
+        if (err.name !== "AbortError") {
+          setError(err.message || "Unable to load event details.");
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadEvent();
+
+    return () => controller.abort();
+  }, [id]);
+
+  if (loading) {
     return (
       <section className="section">
-        <h1>Event not found</h1>
+        <p>Loading event details...</p>
+      </section>
+    );
+  }
+
+  if (error || !event) {
+    return (
+      <section className="section">
+        <h1>Unable to load event</h1>
+        <p>{error || "Event not found."}</p>
         <Link to="/events" className="text-link">
           ← Back to events
         </Link>
       </section>
     );
   }
+
+  const tickets = Array.isArray(event.tickets) ? event.tickets : [];
+
+  const availableTickets = tickets.filter(
+    (ticket) => Number(ticket.available_quantity) > 0
+  );
+
+  const price =
+    tickets.length > 0
+      ? Math.min(...tickets.map((ticket) => Number(ticket.price)))
+      : 0;
+
+  const total = price * quantity;
 
   return (
     <section className="section details-layout">
@@ -106,28 +113,26 @@ export default function EventDetailsPage() {
           ← Back to events
         </Link>
 
-        <div className={`details-banner ${event.style}`}>
-          <span>{event.emoji}</span>
+        <div className="details-banner technology">
+          <span>🎟️</span>
         </div>
 
-        <p className="eyebrow">{event.category} EVENT</p>
-        <h1 className="page-title">{event.name}</h1>
-        <p className="muted">{event.description}</p>
+        <p className="eyebrow">
+          {(event.category || "EVENT").toUpperCase()}
+        </p>
+
+        <h1 className="page-title">{event.title}</h1>
+
+        <p className="muted">
+          {event.description || "Join us for this exciting event."}
+        </p>
 
         <div className="details-information">
           <div>
             <span>📅</span>
             <div>
               <strong>Date</strong>
-              <p>{event.date}</p>
-            </div>
-          </div>
-
-          <div>
-            <span>🕒</span>
-            <div>
-              <strong>Time</strong>
-              <p>{event.time}</p>
+              <p>{formatDate(event.event_date)}</p>
             </div>
           </div>
 
@@ -135,7 +140,10 @@ export default function EventDetailsPage() {
             <span>📍</span>
             <div>
               <strong>Venue</strong>
-              <p>{event.venue}</p>
+              <p>
+                {event.venue || "Venue to be announced"}
+                {event.city ? `, ${event.city}` : ""}
+              </p>
             </div>
           </div>
         </div>
@@ -145,46 +153,66 @@ export default function EventDetailsPage() {
         <p className="eyebrow">RESERVE YOUR SPOT</p>
         <h2>Book tickets</h2>
 
-        <p className="muted">Price per ticket</p>
-        <h2>₹{event.price}</h2>
+        <p className="muted">Price per ticket, starting from</p>
+        <h2>
+          {tickets.length > 0
+            ? `₹${price.toLocaleString("en-IN")}`
+            : "Price unavailable"}
+        </h2>
 
-        <label htmlFor="quantity">Number of tickets</label>
+        {availableTickets.length > 0 ? (
+          <>
+            <label htmlFor="quantity">Number of tickets</label>
 
-        <div className="quantity-control">
-          <button
-            type="button"
-            onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-            aria-label="Decrease tickets"
-          >
-            −
-          </button>
+            <div className="quantity-control">
+              <button
+                type="button"
+                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                aria-label="Decrease tickets"
+              >
+                −
+              </button>
 
-          <span>{quantity}</span>
+              <span>{quantity}</span>
 
-          <button
-            type="button"
-            onClick={() => setQuantity((q) => Math.min(10, q + 1))}
-            aria-label="Increase tickets"
-          >
-            +
-          </button>
-        </div>
+              <button
+                type="button"
+                onClick={() =>
+                  setQuantity((q) =>
+                    Math.min(10, availableTickets.reduce(
+                      (sum, ticket) =>
+                        sum + Number(ticket.available_quantity),
+                      0
+                    ), q + 1)
+                  )
+                }
+                aria-label="Increase tickets"
+              >
+                +
+              </button>
+            </div>
 
-        <div className="price-row">
-          <span>₹{event.price} × {quantity}</span>
-          <strong>₹{event.price * quantity}</strong>
-        </div>
+            <div className="price-row">
+              <span>
+                ₹{price.toLocaleString("en-IN")} × {quantity}
+              </span>
+              <strong>₹{total.toLocaleString("en-IN")}</strong>
+            </div>
 
-        <Link
-          to="/login"
-          className="btn btn-primary booking-button"
-        >
-          Continue to book →
-        </Link>
+            <Link
+              to={`/booking?eventId=${event.event_id}`}
+              className="btn btn-primary booking-button"
+            >
+              Continue to book →
+            </Link>
 
-        <p className="booking-note">
-          Demo only. Your tickets have not been booked.
-        </p>
+            <p className="booking-note">
+              Select your ticket type on the next page.
+            </p>
+          </>
+        ) : (
+          <p>No tickets are currently available for this event.</p>
+        )}
       </aside>
     </section>
   );
