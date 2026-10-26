@@ -14,6 +14,7 @@ import TicketDetailsPage from "./pages/TicketDetailsPage";
 import AdminLoginPage from "./pages/AdminLoginPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import BookingReviewPage from "./pages/BookingReviewPage";
+import OrganizerDashboardPage from "./pages/OrganizerDashboardPage";
 
 import "./App.css";
 import "./index.css";
@@ -80,6 +81,10 @@ function App() {
           <Route
             path="*"
             element={<PlaceholderPage title="404 - Page Not Found" />}
+          />
+          <Route
+            path="/organizer"
+            element={<OrganizerDashboardPage />}
           />
           <Route
   path="/booking-review"

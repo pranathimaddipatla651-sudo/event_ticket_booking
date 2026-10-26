@@ -51,8 +51,8 @@ function Navbar() {
         )}
 
         {role === "organizer" && (
-          <NavLink to="/manage-events">
-            Manage Events
+          <NavLink to="/organizer">
+            Organizer Dashboard
           </NavLink>
         )}
       </div>
