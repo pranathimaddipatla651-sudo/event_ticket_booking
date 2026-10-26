@@ -3,9 +3,21 @@ import { Link } from "react-router-dom";
 
 const API = "http://127.0.0.1:8000";
 
-function formatStatus(status) {
-  return String(status || "draft").toLowerCase();
-}
+const emptyForm = {
+  organizer_id: "",
+  venue_id: "",
+  category_id: "",
+  title: "",
+  description: "",
+  event_date: "",
+  ticket_name: "General Admission",
+  price: "",
+  total_quantity: "",
+  status: "draft",
+};
+
+const normalizeStatus = (status) =>
+  String(status || "draft").toLowerCase();
 
 export default function ManageEventsBookingsPage() {
   const [events, setEvents] = useState([]);
@@ -13,92 +25,120 @@ export default function ManageEventsBookingsPage() {
   const [venues, setVenues] = useState([]);
   const [categories, setCategories] = useState([]);
 
+  const [form, setForm] = useState(emptyForm);
+  const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [showForm, setShowForm] = useState(false);
-  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
 
-  const [form, setForm] = useState({
-    organizer_id: "",
-    venue_id: "",
-    category_id: "",
-    title: "",
-    description: "",
-    event_date: "",
-    ticket_name: "General Admission",
-    price: "",
-    total_quantity: "",
-    status: "draft",
-  });
-
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setError("");
+  // Fetch events from MySQL through FastAPI.
+  const loadEvents = useCallback(async (showLoader = false) => {
+    if (showLoader) setLoading(true);
 
     try {
-      const endpoints = [
-        "/admin/events",
-        "/admin/users",
-        "/admin/venues",
-        "/admin/categories",
-      ];
+      const response = await fetch(`${API}/admin/events`);
 
-      const responses = await Promise.all(
-        endpoints.map((endpoint) =>
-          fetch(`${API}${endpoint}`)
-        )
-      );
+      const data = await response.json().catch(() => []);
 
-      const failedIndex = responses.findIndex(
-        (response) => !response.ok
-      );
-
-      if (failedIndex !== -1) {
-        const response = responses[failedIndex];
-        const data = await response.json().catch(() => ({}));
-
+      if (!response.ok) {
         throw new Error(
-          data.detail ||
-            `Could not load ${endpoints[failedIndex]}.`
+          data.detail || "Could not load events from the database."
         );
       }
 
-      const [eventData, userData, venueData, categoryData] =
-        await Promise.all(
-          responses.map((response) => response.json())
-        );
+      if (!Array.isArray(data)) {
+        throw new Error("The events API did not return a list.");
+      }
 
-      setEvents(Array.isArray(eventData) ? eventData : []);
-
-      setOrganizers(
-        Array.isArray(userData)
-          ? userData.filter(
-              (user) =>
-                String(user.role).toLowerCase() === "organizer" &&
-                String(user.status).toLowerCase() === "active"
-            )
-          : []
-      );
-
-      setVenues(Array.isArray(venueData) ? venueData : []);
-      setCategories(
-        Array.isArray(categoryData) ? categoryData : []
-      );
+      setEvents(data);
+      setError("");
     } catch (err) {
       setError(
-        `${err.message} Check that FastAPI is running and the admin endpoints exist.`
+        `${err.message}. Check that FastAPI and MySQL are running.`
       );
     } finally {
-      setLoading(false);
+      if (showLoader) setLoading(false);
     }
   }, []);
 
+  // Load events and the related dropdown data.
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    let cancelled = false;
 
-  function updateForm(event) {
+    async function initialize() {
+      setLoading(true);
+      setError("");
+
+      try {
+        const paths = [
+          "/admin/events",
+          "/admin/users",
+          "/admin/venues",
+          "/admin/categories",
+        ];
+
+        const responses = await Promise.all(
+          paths.map((path) => fetch(`${API}${path}`))
+        );
+
+        const results = await Promise.all(
+          responses.map(async (response, index) => {
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+              throw new Error(
+                `${paths[index]}: ${
+                  data.detail || `HTTP ${response.status}`
+                }`
+              );
+            }
+
+            return data;
+          })
+        );
+
+        if (cancelled) return;
+
+        const [eventData, userData, venueData, categoryData] = results;
+
+        setEvents(Array.isArray(eventData) ? eventData : []);
+
+        setOrganizers(
+          (Array.isArray(userData) ? userData : []).filter(
+            (user) =>
+              String(user.role).toLowerCase() === "organizer" &&
+              String(user.status).toLowerCase() === "active"
+          )
+        );
+
+        setVenues(Array.isArray(venueData) ? venueData : []);
+        setCategories(Array.isArray(categoryData) ? categoryData : []);
+      } catch (err) {
+        if (!cancelled) setError(err.message);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    initialize();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Refresh the events list every 10 seconds so external database
+  // changes are picked up without a manual page refresh.
+  useEffect(() => {
+    const timer = setInterval(() => {
+      loadEvents(false);
+    }, 10000);
+
+    return () => clearInterval(timer);
+  }, [loadEvents]);
+
+  function handleFormChange(event) {
     const { name, value } = event.target;
 
     setForm((previous) => ({
@@ -109,16 +149,14 @@ export default function ManageEventsBookingsPage() {
 
   async function handleAddEvent(event) {
     event.preventDefault();
-    setMessage("");
-    setError("");
     setSaving(true);
+    setError("");
+    setMessage("");
 
     try {
       const response = await fetch(`${API}/admin/events`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
           organizer_id: Number(form.organizer_id),
@@ -132,29 +170,14 @@ export default function ManageEventsBookingsPage() {
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(
-          typeof data.detail === "string"
-            ? data.detail
-            : "Could not create the event."
-        );
+        throw new Error(data.detail || "Could not create the event.");
       }
 
-      setMessage("Event saved successfully to the database.");
-      setForm({
-        organizer_id: "",
-        venue_id: "",
-        category_id: "",
-        title: "",
-        description: "",
-        event_date: "",
-        ticket_name: "General Admission",
-        price: "",
-        total_quantity: "",
-        status: "draft",
-      });
-
+      setMessage("Event saved to MySQL successfully.");
+      setForm(emptyForm);
       setShowForm(false);
-      await loadData();
+
+      await loadEvents(true);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -162,79 +185,73 @@ export default function ManageEventsBookingsPage() {
     }
   }
 
-  async function toggleStatus(eventItem) {
-    const currentStatus = formatStatus(eventItem.status);
+  async function changeStatus(item) {
+    const current = normalizeStatus(item.status);
+    const next = current === "published" ? "draft" : "published";
 
-    const newStatus =
-      currentStatus === "published" ? "draft" : "published";
-
-    setMessage("");
     setError("");
+    setMessage("");
 
     try {
       const response = await fetch(
-        `${API}/admin/events/${eventItem.event_id}/status`,
+        `${API}/admin/events/${item.event_id}/status`,
         {
           method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ status: newStatus }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: next }),
         }
       );
 
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(
-          data.detail || "Could not update event status."
-        );
+        throw new Error(data.detail || "Could not update event status.");
       }
 
-      setMessage(`Event ${newStatus} successfully.`);
-      await loadData();
+      setMessage(`Event ${next} successfully.`);
+      await loadEvents(true);
     } catch (err) {
       setError(err.message);
     }
   }
 
-  async function deleteEvent(eventItem) {
-    const confirmed = window.confirm(
-      `Delete "${eventItem.title}"? Events with booking history cannot be deleted.`
-    );
+  async function deleteEvent(item) {
+    if (
+      !window.confirm(
+        `Delete "${item.title}"? Events with booking history cannot be deleted.`
+      )
+    ) {
+      return;
+    }
 
-    if (!confirmed) return;
-
-    setMessage("");
     setError("");
+    setMessage("");
 
     try {
       const response = await fetch(
-        `${API}/admin/events/${eventItem.event_id}`,
+        `${API}/admin/events/${item.event_id}`,
         { method: "DELETE" }
       );
 
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(
-          data.detail || "Could not delete the event."
-        );
+        throw new Error(data.detail || "Could not delete the event.");
       }
 
-      setMessage("Event deleted from the database.");
-      await loadData();
+      setMessage("Event deleted from MySQL.");
+      await loadEvents(true);
     } catch (err) {
       setError(err.message);
     }
   }
 
-  const publishedCount = events.filter(
-    (event) => formatStatus(event.status) === "published"
+  const published = events.filter(
+    (item) => normalizeStatus(item.status) === "published"
   ).length;
 
-  const draftCount = events.filter(
-    (event) => formatStatus(event.status) === "draft"
+  const drafts = events.filter(
+    (item) => normalizeStatus(item.status) === "draft"
   ).length;
 
   return (
@@ -246,7 +263,7 @@ export default function ManageEventsBookingsPage() {
             Manage Events <span>& Bookings.</span>
           </h1>
           <p className="muted">
-            Manage events stored in your EventEase database.
+            Events shown here are loaded from your database.
           </p>
         </div>
 
@@ -263,12 +280,12 @@ export default function ManageEventsBookingsPage() {
 
         <div className="manage-stat">
           <span>Published</span>
-          <strong>{publishedCount}</strong>
+          <strong>{published}</strong>
         </div>
 
         <div className="manage-stat">
           <span>Drafts</span>
-          <strong>{draftCount}</strong>
+          <strong>{drafts}</strong>
         </div>
       </div>
 
@@ -279,9 +296,9 @@ export default function ManageEventsBookingsPage() {
           type="button"
           className="primary-button"
           onClick={() => {
-            setShowForm((previous) => !previous);
-            setMessage("");
+            setShowForm((value) => !value);
             setError("");
+            setMessage("");
           }}
         >
           {showForm ? "Cancel" : "+ Add Event"}
@@ -295,24 +312,27 @@ export default function ManageEventsBookingsPage() {
       )}
 
       {error && (
-        <p role="alert" style={{ color: "#c62828" }}>
-          {error}
-        </p>
+        <div role="alert" style={{ color: "#b42318", margin: "16px 0" }}>
+          <p>{error}</p>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => loadEvents(true)}
+          >
+            Retry
+          </button>
+        </div>
       )}
 
       {showForm && (
-        <form
-          className="manage-form"
-          onSubmit={handleAddEvent}
-        >
+        <form className="manage-form" onSubmit={handleAddEvent}>
           <label htmlFor="title">Event name</label>
           <input
             id="title"
             name="title"
             value={form.title}
-            onChange={updateForm}
+            onChange={handleFormChange}
             maxLength={150}
-            placeholder="Enter event name"
             required
           />
 
@@ -321,8 +341,7 @@ export default function ManageEventsBookingsPage() {
             id="description"
             name="description"
             value={form.description}
-            onChange={updateForm}
-            placeholder="Describe your event"
+            onChange={handleFormChange}
           />
 
           <label htmlFor="organizer_id">Organizer</label>
@@ -330,16 +349,13 @@ export default function ManageEventsBookingsPage() {
             id="organizer_id"
             name="organizer_id"
             value={form.organizer_id}
-            onChange={updateForm}
+            onChange={handleFormChange}
             required
           >
-            <option value="">Select an active organizer</option>
-            {organizers.map((organizer) => (
-              <option
-                key={organizer.user_id}
-                value={organizer.user_id}
-              >
-                {organizer.name} (ID: {organizer.user_id})
+            <option value="">Select organizer</option>
+            {organizers.map((user) => (
+              <option key={user.user_id} value={user.user_id}>
+                {user.name} (ID: {user.user_id})
               </option>
             ))}
           </select>
@@ -349,15 +365,12 @@ export default function ManageEventsBookingsPage() {
             id="venue_id"
             name="venue_id"
             value={form.venue_id}
-            onChange={updateForm}
+            onChange={handleFormChange}
             required
           >
-            <option value="">Select a venue</option>
+            <option value="">Select venue</option>
             {venues.map((venue) => (
-              <option
-                key={venue.venue_id}
-                value={venue.venue_id}
-              >
+              <option key={venue.venue_id} value={venue.venue_id}>
                 {venue.name} — {venue.city}
               </option>
             ))}
@@ -368,15 +381,12 @@ export default function ManageEventsBookingsPage() {
             id="category_id"
             name="category_id"
             value={form.category_id}
-            onChange={updateForm}
+            onChange={handleFormChange}
             required
           >
-            <option value="">Select a category</option>
+            <option value="">Select category</option>
             {categories.map((category) => (
-              <option
-                key={category.category_id}
-                value={category.category_id}
-              >
+              <option key={category.category_id} value={category.category_id}>
                 {category.name}
               </option>
             ))}
@@ -388,7 +398,7 @@ export default function ManageEventsBookingsPage() {
             name="event_date"
             type="date"
             value={form.event_date}
-            onChange={updateForm}
+            onChange={handleFormChange}
             min={new Date().toLocaleDateString("en-CA")}
             required
           />
@@ -398,8 +408,7 @@ export default function ManageEventsBookingsPage() {
             id="ticket_name"
             name="ticket_name"
             value={form.ticket_name}
-            onChange={updateForm}
-            maxLength={100}
+            onChange={handleFormChange}
             required
           />
 
@@ -411,11 +420,11 @@ export default function ManageEventsBookingsPage() {
             min="0"
             step="0.01"
             value={form.price}
-            onChange={updateForm}
+            onChange={handleFormChange}
             required
           />
 
-          <label htmlFor="total_quantity">Total tickets</label>
+          <label htmlFor="total_quantity">Number of tickets</label>
           <input
             id="total_quantity"
             name="total_quantity"
@@ -423,7 +432,7 @@ export default function ManageEventsBookingsPage() {
             min="1"
             step="1"
             value={form.total_quantity}
-            onChange={updateForm}
+            onChange={handleFormChange}
             required
           />
 
@@ -432,7 +441,7 @@ export default function ManageEventsBookingsPage() {
             id="status"
             name="status"
             value={form.status}
-            onChange={updateForm}
+            onChange={handleFormChange}
           >
             <option value="draft">Draft</option>
             <option value="published">Published</option>
@@ -443,7 +452,7 @@ export default function ManageEventsBookingsPage() {
             className="primary-button"
             disabled={saving}
           >
-            {saving ? "Saving..." : "Save Event to Database"}
+            {saving ? "Saving..." : "Save Event to MySQL"}
           </button>
         </form>
       )}
@@ -453,13 +462,10 @@ export default function ManageEventsBookingsPage() {
       ) : (
         <div className="manage-event-list">
           {events.map((item) => {
-            const status = formatStatus(item.status);
+            const status = normalizeStatus(item.status);
 
             return (
-              <article
-                className="manage-event-card"
-                key={item.event_id}
-              >
+              <article className="manage-event-card" key={item.event_id}>
                 <div className="manage-event-info">
                   <span
                     className={
@@ -482,15 +488,11 @@ export default function ManageEventsBookingsPage() {
                   {item.venue_name && (
                     <p>
                       {item.venue_name}
-                      {item.venue_city
-                        ? `, ${item.venue_city}`
-                        : ""}
+                      {item.venue_city ? `, ${item.venue_city}` : ""}
                     </p>
                   )}
 
-                  {item.category_name && (
-                    <p>Category: {item.category_name}</p>
-                  )}
+                  {item.category_name && <p>{item.category_name}</p>}
 
                   <p>
                     Event ID: {item.event_id}
@@ -500,18 +502,15 @@ export default function ManageEventsBookingsPage() {
                 </div>
 
                 <div className="manage-event-actions">
-                  {status !== "cancelled" &&
-                    status !== "completed" && (
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        onClick={() => toggleStatus(item)}
-                      >
-                        {status === "published"
-                          ? "Unpublish"
-                          : "Publish"}
-                      </button>
-                    )}
+                  {status !== "cancelled" && status !== "completed" && (
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={() => changeStatus(item)}
+                    >
+                      {status === "published" ? "Unpublish" : "Publish"}
+                    </button>
+                  )}
 
                   <button
                     type="button"
@@ -525,18 +524,17 @@ export default function ManageEventsBookingsPage() {
             );
           })}
 
-          {events.length === 0 && (
+          {events.length === 0 && !error && (
             <p className="muted">
-              No events exist in your database yet. Use Add Event
-              to create your first event.
+              No events found in MySQL. Add an event or check your database.
             </p>
           )}
         </div>
       )}
 
       <p className="manage-note">
-        Event records and ticket details are loaded from the backend.
-        Changes are saved only when the API request succeeds.
+        This page refreshes its event list every 10 seconds. Changes are
+        saved only when the backend confirms the request.
       </p>
     </section>
   );
