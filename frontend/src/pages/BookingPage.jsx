@@ -35,15 +35,16 @@ function BookingPage() {
   }
 });
 
-  useEffect(() => {
-    if (!user) {
-      const intendedPage = `/booking?eventId=${encodeURIComponent(eventId || "")}`;
-      navigate(
-        `/login?redirect=${encodeURIComponent(intendedPage)}`,
-        { replace: true }
-      );
-    }
-  }, [navigate, eventId, user]);
+useEffect(() => {
+  if (!user) {
+    const intendedPage = `/booking?eventId=${encodeURIComponent(eventId || "")}`;
+
+    navigate(
+      `/login?redirect=${encodeURIComponent(intendedPage)}`,
+      { replace: true }
+    );
+  }
+}, [navigate, eventId, user]);
 
   useEffect(() => {
     if (!user || !eventId) {
