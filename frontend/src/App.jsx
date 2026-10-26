@@ -81,7 +81,15 @@ function App() {
             path="*"
             element={<PlaceholderPage title="404 - Page Not Found" />}
           />
-          <Route path="/booking-review" element={<BookingReviewPage />} />
+          <Route
+  path="/booking-review"
+  element={<BookingReviewPage />}
+/>
+
+<Route
+  path="/booking-confirmation/:bookingId"
+  element={<BookingConfirmationPage />}
+/>
         </Routes>
       </main>
 
