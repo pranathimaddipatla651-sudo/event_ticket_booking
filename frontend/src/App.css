@@ -2035,3 +2035,237 @@
   }
 }
 
+/* ===== Organizer dashboard ===== */
+.organizer-page {
+  max-width: 1250px;
+  min-height: 75vh;
+  margin: 36px auto;
+  padding: 32px;
+  color: #172033;
+}
+
+.organizer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+}
+
+.organizer-eyebrow {
+  margin: 0;
+  color: #635bdb;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 2px;
+}
+
+.organizer-header h1 {
+  margin: 10px 0;
+  font-size: clamp(30px, 4vw, 40px);
+  letter-spacing: -1px;
+}
+
+.organizer-header p:not(.organizer-eyebrow),
+.organizer-section-heading p {
+  margin: 0;
+  color: #738096;
+  line-height: 1.6;
+}
+
+.organizer-primary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 13px 20px;
+  background: #5145cd;
+  color: #fff;
+  border-radius: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 6px 15px #5145cd30;
+  transition: 0.2s;
+}
+
+.organizer-primary-button:hover {
+  background: #4035ad;
+  transform: translateY(-2px);
+}
+
+.organizer-error {
+  margin-bottom: 24px;
+  padding: 12px 16px;
+  background: #fee2e2;
+  color: #991b1b;
+  border-radius: 10px;
+}
+
+.organizer-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 30px;
+}
+
+.organizer-stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 24px;
+  background: #fff;
+  border: 1px solid #e8eaf2;
+  border-radius: 18px;
+  box-shadow: 0 5px 20px #17203308;
+  transition: 0.2s;
+}
+
+.organizer-stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px #17203312;
+}
+
+.organizer-stat-card span {
+  color: #6b768a;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.organizer-stat-card strong {
+  font-size: 34px;
+  color: #172033;
+}
+
+.organizer-stat-card small {
+  color: #8a94a6;
+  font-size: 12px;
+}
+
+.organizer-section {
+  padding: 26px;
+  background: #fff;
+  border: 1px solid #e8eaf2;
+  border-radius: 20px;
+  box-shadow: 0 5px 20px #17203308;
+}
+
+.organizer-section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+.organizer-section-heading h2 {
+  margin: 0 0 7px;
+  font-size: 23px;
+}
+
+.organizer-section-heading > a {
+  color: #5145cd;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.organizer-empty {
+  padding: 42px 16px;
+  text-align: center;
+  background: #f8f9fd;
+  border-radius: 14px;
+}
+
+.organizer-empty p {
+  margin-bottom: 20px;
+  color: #738096;
+}
+
+.organizer-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #edf0f5;
+  border-radius: 12px;
+}
+
+.organizer-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.organizer-table th {
+  padding: 15px 18px;
+  background: #f7f8fc;
+  color: #667085;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.organizer-table td {
+  padding: 17px 18px;
+  border-top: 1px solid #edf0f5;
+  font-size: 14px;
+}
+
+.organizer-table tbody tr:hover {
+  background: #fafaff;
+}
+
+.organizer-status {
+  display: inline-block;
+  padding: 6px 11px;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #166534;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
+.organizer-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 22px;
+}
+
+.organizer-quick-actions a {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 22px;
+  background: #fff;
+  border: 1px solid #e8eaf2;
+  border-radius: 16px;
+  color: #172033;
+  text-decoration: none;
+  transition: 0.2s;
+}
+
+.organizer-quick-actions a:hover {
+  border-color: #b9b2ff;
+  transform: translateY(-3px);
+}
+
+.organizer-quick-actions a > span {
+  font-size: 28px;
+}
+
+.organizer-quick-actions small {
+  color: #738096;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+@media (max-width: 800px) {
+  .organizer-page {
+    margin: 20px auto;
+    padding: 18px;
+  }
+
+  .organizer-stats,
+  .organizer-quick-actions {
+    grid-template-columns: 1fr;
+  }
+}

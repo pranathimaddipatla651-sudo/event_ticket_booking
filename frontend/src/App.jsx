@@ -1,4 +1,3 @@
-
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import Navbar from "./Navbar";
@@ -59,8 +58,13 @@ function App() {
           <Route path="/events/:id" element={<EventDetailsPage />} />
 
           <Route path="/booking" element={<BookingPage />} />
+          <Route path="/booking-review" element={<BookingReviewPage />} />
           <Route
             path="/confirmation/:id"
+            element={<BookingConfirmationPage />}
+          />
+          <Route
+            path="/booking-confirmation/:bookingId"
             element={<BookingConfirmationPage />}
           />
 
@@ -70,36 +74,21 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
 
+          <Route path="/admin-login" element={<AdminLoginPage />} />
+          <Route path="/admin" element={<ProtectedAdminRoute />} />
+          <Route path="/admin/manage" element={<ManageEventsBookingsPage />} />
+
+          <Route path="/organizer" element={<OrganizerDashboardPage />} />
           <Route
-            path="/admin-login"
-            element={<AdminLoginPage />}
-          />
-          <Route
-            path="/admin"
-            element={<ProtectedAdminRoute />}
+            path="/manage-events"
+            element={<ManageEventsBookingsPage />}
           />
 
+          {/* Catch-all must stay last */}
           <Route
             path="*"
             element={<PlaceholderPage title="404 - Page Not Found" />}
           />
-          <Route
-            path="/organizer"
-            element={<OrganizerDashboardPage />}
-          />
-          <Route
-  path="/booking-review"
-  element={<BookingReviewPage />}
-/>
-<Route
-  path="/admin/manage"
-  element={<ManageEventsBookingsPage />}
-/>
-
-<Route
-  path="/booking-confirmation/:bookingId"
-  element={<BookingConfirmationPage />}
-/>
         </Routes>
       </main>
 

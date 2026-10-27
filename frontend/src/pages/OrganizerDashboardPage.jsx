@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -20,22 +19,35 @@ function OrganizerDashboardPage() {
           localStorage.getItem("eventEaseUser") || "null"
         );
 
-        if (!storedUser || String(storedUser.role).toLowerCase() !== "organizer") {
+        if (
+          !storedUser ||
+          String(storedUser.role).toLowerCase() !== "organizer"
+        ) {
           navigate("/login", { replace: true });
           return;
         }
 
         if (active) setUser(storedUser);
 
-        // This endpoint must return only this organizer's events.
+        // Support different key names for the user's ID.
+        const organizerId =
+          storedUser.user_id ?? storedUser.id ?? storedUser.userId;
+
+        if (!organizerId) {
+          throw new Error(
+            "Organizer ID not found in the saved login. Please log in again."
+          );
+        }
+
+        // Backend route: GET /organizer/events?organizer_id=<id>
         const response = await fetch(
-          `${API}/organizer/${storedUser.user_id}/events`
+          `${API}/organizer/events?organizer_id=${organizerId}`
         );
 
         if (!response.ok) {
           throw new Error(
             response.status === 404
-              ? "Organizer events API is not created yet."
+              ? "Organizer events API was not found. Check that the organizer router is registered in the backend."
               : "Could not load your events."
           );
         }
@@ -94,11 +106,7 @@ function OrganizerDashboardPage() {
         </Link>
       </header>
 
-      {error && (
-        <div className="organizer-error">
-          {error}
-        </div>
-      )}
+      {error && <div className="organizer-error">{error}</div>}
 
       <section className="organizer-stats">
         <article className="organizer-stat-card">
@@ -134,8 +142,7 @@ function OrganizerDashboardPage() {
           <div className="organizer-empty">
             <h3>No events to display</h3>
             <p>
-              Once your events are available through the backend, they will
-              appear here.
+              You have not created any events yet. Create one to see it here.
             </p>
             <Link to="/manage-events" className="organizer-primary-button">
               Go to Manage Events
@@ -147,6 +154,7 @@ function OrganizerDashboardPage() {
               <thead>
                 <tr>
                   <th>Event</th>
+                  <th>Venue</th>
                   <th>Date</th>
                   <th>Status</th>
                 </tr>
@@ -155,6 +163,13 @@ function OrganizerDashboardPage() {
                 {events.map((event) => (
                   <tr key={event.event_id}>
                     <td>{event.title}</td>
+                    <td>
+                      {event.venue_name
+                        ? `${event.venue_name}${
+                            event.city ? `, ${event.city}` : ""
+                          }`
+                        : "—"}
+                    </td>
                     <td>
                       {event.event_date
                         ? new Date(event.event_date).toLocaleDateString()
