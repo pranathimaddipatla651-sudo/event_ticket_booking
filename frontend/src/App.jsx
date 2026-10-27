@@ -1,3 +1,4 @@
+
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import Navbar from "./Navbar";
@@ -54,11 +55,10 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
 
+          {/* Customer event pages */}
           <Route path="/events" element={<EventsPage />} />
           <Route path="/events/:id" element={<EventDetailsPage />} />
-
           <Route path="/booking" element={<BookingPage />} />
-          <Route path="/booking-review" element={<BookingReviewPage />} />
           <Route
             path="/confirmation/:id"
             element={<BookingConfirmationPage />}
@@ -67,24 +67,33 @@ function App() {
             path="/booking-confirmation/:bookingId"
             element={<BookingConfirmationPage />}
           />
-
+          <Route path="/booking-review" element={<BookingReviewPage />} />
           <Route path="/my-bookings" element={<MyBookingsPage />} />
           <Route path="/ticket/:id" element={<TicketDetailsPage />} />
 
+          {/* Login and registration */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
 
+          {/* Admin pages */}
           <Route path="/admin-login" element={<AdminLoginPage />} />
           <Route path="/admin" element={<ProtectedAdminRoute />} />
-          <Route path="/admin/manage" element={<ManageEventsBookingsPage />} />
+          <Route
+            path="/admin/manage"
+            element={<ManageEventsBookingsPage />}
+          />
 
-          <Route path="/organizer" element={<OrganizerDashboardPage />} />
+          {/* Organizer pages */}
+          <Route
+            path="/organizer"
+            element={<OrganizerDashboardPage />}
+          />
           <Route
             path="/manage-events"
             element={<ManageEventsBookingsPage />}
           />
 
-          {/* Catch-all must stay last */}
+          {/* Keep the 404 route last */}
           <Route
             path="*"
             element={<PlaceholderPage title="404 - Page Not Found" />}
