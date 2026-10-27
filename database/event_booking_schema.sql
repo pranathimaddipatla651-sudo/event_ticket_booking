@@ -151,7 +151,7 @@ CREATE VIEW v_total_revenue AS
 
 CREATE VIEW v_monthly_bookings AS
   SELECT DATE_FORMAT(booking_date,'%Y-%m') AS month, COUNT(*) AS bookings,
-         SUM(total_amount) AS revenue
+        SUM(total_amount) AS revenue
   FROM Bookings WHERE status = 'confirmed' GROUP BY month;
 
 CREATE VIEW v_top_users AS
@@ -162,9 +162,9 @@ CREATE VIEW v_top_users AS
 -- P2: sales, alerts, revenue per event
 CREATE VIEW v_event_sales AS
   SELECT e.event_id, e.title, tt.name AS ticket_type, tt.total_quantity,
-         tt.total_quantity - tt.available_quantity AS sold,
-         tt.available_quantity,
-         CASE WHEN tt.available_quantity = 0 THEN 'SOLD OUT'
+        tt.total_quantity - tt.available_quantity AS sold,
+        tt.available_quantity,
+        CASE WHEN tt.available_quantity = 0 THEN 'SOLD OUT'
               WHEN tt.available_quantity <= tt.total_quantity * 0.1 THEN 'NEARLY SOLD OUT'
               ELSE 'OK' END AS alert,
          (tt.total_quantity - tt.available_quantity) * tt.price AS revenue
