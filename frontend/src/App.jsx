@@ -55,51 +55,49 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
 
+          {/* Customer event pages */}
           <Route path="/events" element={<EventsPage />} />
           <Route path="/events/:id" element={<EventDetailsPage />} />
-
           <Route path="/booking" element={<BookingPage />} />
           <Route
             path="/confirmation/:id"
             element={<BookingConfirmationPage />}
           />
-
+          <Route
+            path="/booking-confirmation/:bookingId"
+            element={<BookingConfirmationPage />}
+          />
+          <Route path="/booking-review" element={<BookingReviewPage />} />
           <Route path="/my-bookings" element={<MyBookingsPage />} />
           <Route path="/ticket/:id" element={<TicketDetailsPage />} />
 
+          {/* Login and registration */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
 
+          {/* Admin pages */}
+          <Route path="/admin-login" element={<AdminLoginPage />} />
+          <Route path="/admin" element={<ProtectedAdminRoute />} />
           <Route
-            path="/admin-login"
-            element={<AdminLoginPage />}
-          />
-          <Route
-            path="/admin"
-            element={<ProtectedAdminRoute />}
+            path="/admin/manage"
+            element={<ManageEventsBookingsPage />}
           />
 
-          <Route
-            path="*"
-            element={<PlaceholderPage title="404 - Page Not Found" />}
-          />
+          {/* Organizer pages */}
           <Route
             path="/organizer"
             element={<OrganizerDashboardPage />}
           />
           <Route
-  path="/booking-review"
-  element={<BookingReviewPage />}
-/>
-<Route
-  path="/admin/manage"
-  element={<ManageEventsBookingsPage />}
-/>
+            path="/manage-events"
+            element={<ManageEventsBookingsPage />}
+          />
 
-<Route
-  path="/booking-confirmation/:bookingId"
-  element={<BookingConfirmationPage />}
-/>
+          {/* Keep the 404 route last */}
+          <Route
+            path="*"
+            element={<PlaceholderPage title="404 - Page Not Found" />}
+          />
         </Routes>
       </main>
 
